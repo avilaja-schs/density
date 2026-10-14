@@ -1,0 +1,1458 @@
+<title>Density Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Atkinson+Hyperlegible+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: seaside lab bench (sunset sky, sea, sand, glass tank). A 1000x500 scene (canvas) scaled to fit, with floating control
+   panels on top, and a black screen-picker bar underneath. Single bright "outdoor lab" look by design. */
+:root {
+  --page: #f4efe6;      /* page behind the sim */
+  --panel: #ffffff;     /* control panels */
+  --ink: #14262f;       /* main text */
+  --muted: #4f6168;     /* secondary text */
+  --line: #93a9ad;      /* panel borders */
+  --accent: #0f7c86;    /* buttons, focus */
+  --nav: #0f2c3d;       /* bottom bar */
+  --nav-on: #ff9b71;    /* selected screen */
+  --ok: #1b7f3a;  --ok-bg: #e7f6ec;
+  --bad: #c22b2b; --bad-bg: #fdeceb;
+  --hint: #fff3c4;
+  --font: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.4; }
+* { box-sizing: border-box; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.app { max-width: 1280px; margin: 0 auto; padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- Scene ---------- */
+.stage-scroll { overflow-x: auto; border-radius: 0; background: #f7a072; }
+.stage-outer { position: relative; }
+.stage-inner { position: absolute; left: 0; top: 0; width: 1000px; height: 500px; transform-origin: 0 0; }
+#scene { position: absolute; inset: 0; width: 1000px; height: 500px; touch-action: none; cursor: grab; }
+#scene.dragging { cursor: grabbing; }
+
+.panel { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 12px; font-size: 15px; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+.panel h3 { margin: 0 0 4px; font-size: 17px; }
+.panel label { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 1px 0; }
+.panel input[type=radio], .panel input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.panel .note { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
+.slider-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; margin-bottom: 6px; }
+.slider-row .val { font-family: var(--mono); font-size: 14px; border: 1px solid #c7cdd3; border-radius: 4px; padding: 1px 8px; min-width: 84px; text-align: right; }
+.slider-ctl { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; }
+.slider-ctl input[type=range] { flex: 1; accent-color: var(--accent); }
+.nudge { width: 26px; height: 24px; border: 1px solid #333; border-radius: 4px; background: #fff; cursor: pointer; font-size: 11px; line-height: 1; }
+.eq { font-family: var(--font); font-variant-numeric: tabular-nums; font-size: 14px; background: #f3f6f8; border-radius: 6px; padding: 6px 8px; }
+.eq b { font-family: var(--font); }
+
+.reset { position: absolute; left: 14px; top: 12px; width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid #fff; background: radial-gradient(circle at 35% 30%, #4cc3c9, #0f7c86); color: #fff;
+  font-size: 24px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+
+/* Mystery */
+.table-btn { left: 50%; transform: translateX(-50%); top: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.plus { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 4px; background: var(--accent); color: #fff; font-size: 16px; line-height: 1; }
+.dtable { left: 50%; transform: translateX(-50%); top: 50px; width: 360px; z-index: 3; }
+.dtable table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.dtable td { padding: 2px 6px; border-bottom: 1px solid #e3e7ea; }
+.dtable td.n { font-family: var(--mono); text-align: right; }
+.small-btn { border: 2px solid var(--accent); background: #fff; color: var(--accent); font-weight: 700; border-radius: 5px; padding: 2px 10px; cursor: pointer; font-size: 14px; }
+.small-btn:hover { background: #e6f3f1; }
+/* Mystery: measure-a-block panel */
+.pick-row { display: flex; gap: 5px; margin: 2px 0 6px; flex-wrap: wrap; }
+.pick-row button { font: 700 14px var(--mono); padding: 4px 8px; border-radius: 6px; border: 2px solid var(--line); background: #fff; cursor: pointer; }
+.pick-row button[aria-pressed="true"] { border-color: #ff7a59; background: #fff1ec; }
+.pick-row button.done { border-color: var(--ok); color: var(--ok); }
+.meas { display: grid; grid-template-columns: auto minmax(0, 1fr) 42px; gap: 4px 8px; align-items: center; }
+.meas label { font-weight: 700; font-size: 14px; }
+.meas input { width: 100%; min-width: 0; font: 700 16px var(--mono); padding: 2px 8px; border: 2px solid var(--line); border-radius: 6px; background: #fff; }
+.meas input.ok { border-color: var(--ok); background: var(--ok-bg); }
+.meas input.bad { border-color: var(--bad); background: var(--bad-bg); }
+.meas input:disabled { color: var(--ink); }
+.meas span { font: 14px var(--mono); color: var(--muted); }
+.meas-check { margin-top: 6px; width: 100%; font-size: 15px; padding: 4px; }
+#measStatus { margin-top: 4px; }
+.pop .checks { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
+.pop .checks li { background: #fff; border-radius: 8px; padding: 6px 10px; }
+.pop .checks li.ok { color: var(--ok); font-weight: 700; }
+.small-btn:disabled { opacity: .45; cursor: default; }
+.steps { margin: 4px 0 0; padding-left: 20px; font-size: 15px; line-height: 1.4; }
+.tri-panel { padding-bottom: 12px; }
+.tri-panel .tri { margin-top: 4px; }
+.howto { max-height: 252px; overflow-y: auto; }
+.steps li { margin: 2px 0; }
+
+/* ---------- Bottom bar ---------- */
+.nav { background: var(--nav); color: #fff; border-radius: 10px 10px 0 0; display: flex; align-items: center; gap: 12px; padding: 6px 14px; flex-wrap: wrap; }
+.nav .brand { font-size: 22px; font-weight: 700; margin-right: auto; }
+.langs { display: flex; border: 1px solid #3d5b6c; border-radius: 999px; overflow: hidden; }
+.langs button { background: transparent; color: #b9cbd2; border: 0; padding: 5px 11px; font-size: 14px; cursor: pointer; }
+.langs button + button { border-left: 1px solid #3d5b6c; }
+.langs button[aria-pressed="true"] { background: var(--nav-on); color: var(--nav); font-weight: 700; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--nav); color: #fff; padding: 10px 16px; border-radius: 8px; z-index: 60; max-width: calc(100% - 32px); }
+.nav .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { background: transparent; border: 0; color: #b9cbd2; cursor: pointer; padding: 4px 10px 2px; border-radius: 6px; display: grid; justify-items: center; gap: 2px; font-size: 14px; }
+.tab .ico { width: 44px; height: 28px; border-radius: 4px; background: #24475a; position: relative; overflow: hidden; }
+.tab .ico i { position: absolute; bottom: 4px; width: 12px; height: 12px; }
+.tab[aria-current="page"] { color: var(--nav-on); }
+.tab[aria-current="page"] .ico { color: var(--nav) !important; background: #e8f3f2; outline: 2px solid var(--nav-on); }
+.tab:hover { color: #fff; }
+
+/* ---------- Home ---------- */
+.home { background: linear-gradient(#f7a072, #fde4c3 66%, #3a8fa0 66%, #2a6f80 76%, #d9bf8c 76%, #cfa96e 84%); border-radius: 0 0 10px 10px; padding: 28px 20px 40px; }
+.home h1 { margin: 0 0 4px; color: #fff; font-size: clamp(28px, 5vw, 44px); text-shadow: 0 2px 6px rgba(0,0,0,.25); text-wrap: balance; }
+.home p.lead { margin: 0 0 20px; color: #fff; font-size: 18px; text-shadow: 0 1px 3px rgba(0,0,0,.3); max-width: 60ch; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 2px solid transparent; border-radius: 10px; padding: 14px; text-align: left; cursor: pointer; display: grid; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.card:hover { border-color: var(--accent); }
+.card strong { font-size: 19px; }
+.card span { color: var(--muted); font-size: 15px; }
+.card .pic { height: 46px; position: relative; background: #e6f3f1; border-radius: 6px; overflow: hidden; }
+.card .pic i { position: absolute; bottom: 6px; }
+
+/* ---------- Test ---------- */
+.test { background: var(--panel); border-radius: 0 0 10px 10px; padding: 20px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 820px) { .test { grid-template-columns: minmax(0, 1fr); } }
+.test h2 { margin: 0; font-size: 26px; }
+.test .sub { margin: 4px 0 0; color: var(--muted); }
+.clues { display: grid; gap: 8px; margin: 14px 0; padding: 0; list-style: none; }
+.clues li { font-family: var(--mono); font-size: 30px; font-weight: 700; background: #f2f6f9; border: 1px solid #d5dde3; border-radius: 8px; padding: 6px 16px; display: flex; align-items: baseline; gap: 12px; }
+.clues li .u { color: var(--accent); }
+.clues li.missing { background: #fff; border: 2px dashed var(--line); color: var(--muted); font-size: 22px; }
+.answer { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.answer label { display: grid; gap: 2px; font-weight: 700; font-size: 15px; }
+.answer input, .answer select { font-size: 22px; padding: 6px 10px; border: 2px solid var(--line); border-radius: 8px; background: #fff; }
+.answer input { width: 9ch; font-family: var(--mono); }
+.big-btn { font-size: 19px; font-weight: 700; padding: 9px 18px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+.big-btn.alt { background: #fff; color: var(--accent); border: 2px solid var(--accent); }
+.big-btn:disabled { opacity: .45; cursor: default; }
+.msg { min-height: 1.4em; color: var(--bad); font-weight: 700; margin: 6px 0 0; }
+.score { display: flex; gap: 10px; flex-wrap: wrap; }
+.score div { background: #f2f6f9; border-radius: 8px; padding: 8px 14px; }
+.score b { display: block; font-size: 26px; font-family: var(--mono); }
+.side { display: grid; gap: 12px; align-content: start; }
+.box { border: 1px solid #d5dde3; border-radius: 10px; padding: 12px; }
+.box h3 { margin: 0 0 6px; font-size: 18px; }
+.unit-key { width: 100%; border-collapse: collapse; font-size: 15px; }
+.unit-key td { padding: 3px 6px; border-bottom: 1px solid #e6eaee; }
+.unit-key td:first-child { font-family: var(--mono); font-weight: 700; width: 70px; }
+.unit-key tr.no td { color: var(--muted); }
+/* Keypad calculator */
+.keycalc { max-width: 300px; display: grid; gap: 6px; }
+.keycalc .screen { background: #0f2c3d; color: #fff; border-radius: 8px; padding: 6px 10px; text-align: right; font-family: var(--mono); }
+.keycalc .expr { font-size: 14px; color: #b9cbd2; min-height: 1.3em; word-break: break-all; }
+.keycalc input { width: 100%; background: transparent; border: 0; color: #fff; font: 700 26px var(--mono); text-align: right; padding: 0; }
+.keycalc .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.keycalc .keys button { font: 700 21px var(--mono); padding: 9px 0; border-radius: 8px; border: 1px solid #c3d0d3; background: #fff; cursor: pointer; touch-action: manipulation; }
+.keycalc .keys button:active { transform: translateY(1px); }
+.keycalc .keys .op { background: #e6f3f1; color: var(--accent); border-color: #9fcfcc; }
+.keycalc .keys .clr { background: #fdeceb; color: var(--bad); border-color: #f0b9b5; grid-column: span 2; font-family: var(--font); font-size: 17px; }
+.keycalc .keys .eqk { background: var(--accent); color: #fff; border-color: var(--accent); grid-column: span 2; }
+.keycalc .use { font-size: 15px; padding: 6px 10px; }
+
+/* Tools strip under the scene */
+.tools { background: var(--panel); border-radius: 0 0 10px 10px; padding: 12px 14px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); border-top: 1px solid #c9d2d9; }
+.tools .box { min-width: 0; }
+.formulas { font-family: var(--mono); font-size: 17px; line-height: 1.6; }
+
+/* Density triangle (CSS only) */
+.tri-wrap { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.tri { width: 150px; height: 128px; position: relative; flex: none; }
+.tri::before { content: ""; position: absolute; inset: 0; background: #f6c177; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.tri span { position: absolute; font-family: var(--mono); font-weight: 700; font-size: 24px; }
+.tri .m { top: 40px; left: 0; right: 0; text-align: center; }
+.tri .bar { position: absolute; top: 76px; left: 38px; right: 38px; height: 3px; background: var(--ink); }
+.tri .d { top: 88px; left: 34px; } .tri .x { top: 88px; left: 0; right: 0; text-align: center; } .tri .v { top: 88px; right: 34px; }
+.tri.small { transform: scale(.7); transform-origin: left center; width: 105px; margin-right: -45px; }
+
+/* ---------- Popup + confetti ---------- */
+.overlay { position: fixed; inset: 0; background: rgba(10, 20, 30, .45); display: grid; place-items: center; z-index: 40;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.pop { width: min(560px, 100%); max-height: 90vh; overflow: auto; background: var(--panel); border-radius: 14px; padding: 18px 20px; border-top: 10px solid; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.pop.ok { border-color: var(--ok); background: var(--ok-bg); }
+.pop.bad { border-color: var(--bad); background: var(--bad-bg); }
+.pop h2 { margin: 0 0 8px; display: flex; align-items: center; gap: 10px; font-size: 26px; }
+.pop.ok h2 { color: var(--ok); } .pop.bad h2 { color: var(--bad); }
+.pop .badge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 24px; flex: none; }
+.pop.ok .badge { background: var(--ok); } .pop.bad .badge { background: var(--bad); }
+.pop .body { font-size: 17px; }
+.pop .body p { margin: 6px 0; }
+.pop .math { font-family: var(--font); font-variant-numeric: tabular-nums; background: #fff; border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 16px; }
+.pop .yours { color: var(--bad); font-weight: 700; }
+.pop .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.pop.bad .big-btn { background: var(--bad); }
+.pop.ok .big-btn { background: var(--ok); }
+.pop .big-btn.alt { background: #fff; color: var(--ink); border: 2px solid var(--line); }
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+.narrow-note { display: none; color: var(--muted); font-size: 14px; margin: 6px 0 0; }
+@media (max-width: 700px) { .narrow-note { display: block; } }
+</style>
+
+<div class="app">
+  <!-- Screen picker + language buttons, at the top of the page -->
+  <nav class="nav" aria-label="Screens">
+    <span class="brand" data-i="title"></span>
+    <div class="langs" role="group" aria-label="Language / Idioma / Ngôn ngữ">
+      <button data-lang="en" lang="en">English</button><button data-lang="es" lang="es">Español</button><button data-lang="vi" lang="vi">Tiếng Việt</button>
+    </div>
+    <div class="tabs">
+      <button class="tab" data-go="home"><span class="ico" style="display:grid;place-items:center;font-size:18px;color:#fff">⌂</span><span data-i="tab_home"></span></button>
+      <button class="tab" data-go="intro"><span class="ico"><i style="left:16px;background:#8a5a2b"></i></span><span data-i="tab_intro"></span></button>
+      <button class="tab" data-go="compare"><span class="ico"><i style="left:8px;background:#e2342d;width:9px;height:9px"></i><i style="left:18px;background:#f7d117;width:9px;height:9px"></i><i style="left:28px;background:#2e9e44;width:9px;height:9px"></i></span><span data-i="tab_compare"></span></button>
+      <button class="tab" data-go="mystery"><span class="ico"><i style="left:16px;background:#81b29a"></i></span><span data-i="tab_mystery"></span></button>
+      <button class="tab" data-go="test"><span class="ico" style="display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:12px;color:#fff">g/mL</span><span data-i="tab_test"></span></button>
+    </div>
+  </nav>
+  <!-- HOME -->
+  <section id="home" class="home" aria-label="Density Lab">
+    <h1 data-i="title">Density Lab</h1>
+    <p class="lead" data-i="lead"></p>
+    <div class="cards">
+      <button class="card" data-go="intro"><div class="pic"><i style="left:20px;width:30px;height:30px;background:#8a5a2b"></i></div><strong data-i="tab_intro"></strong><span data-i="card_intro"></span></button>
+      <button class="card" data-go="compare"><div class="pic"><i style="left:12px;width:26px;height:26px;background:#e2342d"></i><i style="left:42px;width:26px;height:26px;background:#f7d117"></i><i style="left:72px;width:26px;height:26px;background:#2e9e44"></i><i style="left:102px;width:26px;height:26px;background:#1f5fd6"></i></div><strong data-i="tab_compare"></strong><span data-i="card_compare"></span></button>
+      <button class="card" data-go="mystery"><div class="pic"><i style="left:20px;width:30px;height:30px;background:#3d5a80"></i><i style="left:56px;width:22px;height:22px;background:#81b29a"></i></div><strong data-i="tab_mystery"></strong><span data-i="card_mystery"></span></button>
+      <button class="card" data-go="test"><div class="pic"><i style="left:16px;bottom:10px;font-style:normal;font-family:var(--mono);font-weight:700;font-size:20px">? g/mL</i></div><strong data-i="tab_test"></strong><span data-i="card_test"></span></button>
+    </div>
+  </section>
+
+  <!-- SIM SCREENS (Intro / Compare / Mystery share one scene) -->
+  <div id="sim" class="stage-scroll" hidden>
+    <div class="stage-outer" id="stageOuter">
+      <div class="stage-inner" id="stageInner">
+        <canvas id="scene" data-ia="sceneAria"></canvas>
+
+        <!-- Intro panels -->
+        <div class="panel" data-for="intro" style="right:10px;top:10px;width:190px">
+          <h3 data-i="material"></h3>
+          <div id="matRadios"></div>
+        </div>
+        <div class="panel" data-for="intro" style="right:10px;top:248px;width:280px">
+          <div id="introSliders"></div>
+          <div class="eq" id="introEq"></div>
+        </div>
+
+        <!-- Compare panels -->
+        <div class="panel" data-for="compare" style="right:10px;top:10px;width:200px">
+          <h3 data-i="blocks"></h3>
+          <label><input type="radio" name="cmode" id="cm-volume" value="volume" checked> <span data-i="sameVolume"></span></label>
+          <label><input type="radio" name="cmode" id="cm-mass" value="mass"> <span data-i="sameMass"></span></label>
+          <label><input type="radio" name="cmode" id="cm-density" value="density"> <span data-i="sameDensity"></span></label>
+        </div>
+        <div class="panel" data-for="compare" style="right:10px;top:248px;width:280px">
+          <div id="compareSlider"></div>
+          <p class="note" id="compareQ"></p>
+        </div>
+
+        <!-- Mystery panels -->
+        <div class="panel" data-for="mystery" style="right:10px;top:10px;width:160px">
+          <h3 data-i="blocks"></h3>
+          <label><input type="radio" name="mset" id="ms-1" value="1" checked> <span data-i="set"></span> 1</label>
+          <label><input type="radio" name="mset" id="ms-2" value="2"> <span data-i="set"></span> 2</label>
+          <label><input type="radio" name="mset" id="ms-3" value="3"> <span data-i="set"></span> 3</label>
+          <label><input type="radio" name="mset" id="ms-r" value="r"> <span data-i="random"></span></label>
+        </div>
+        <button class="panel table-btn" data-for="mystery" id="tableBtn" aria-expanded="false"><span class="plus" id="tablePlus">+</span> <span data-i="densityTable"></span></button>
+        <div class="panel dtable" id="dtable" hidden>
+          <table id="dtableBody"></table>
+          <p class="note" data-i="tableNote"></p>
+        </div>
+        <div class="panel" data-for="mystery" style="right:10px;top:236px;width:282px">
+          <h3 data-i="measureT"></h3>
+          <div class="pick-row" id="pickRow" role="group"></div>
+          <div class="meas">
+            <label for="inMass" data-i="mass"></label><input id="inMass" inputmode="decimal" autocomplete="off"><span>g</span>
+            <label for="inVol" data-i="volume"></label><input id="inVol" inputmode="decimal" autocomplete="off"><span>mL</span>
+            <label for="inDen" data-i="density"></label><input id="inDen" inputmode="decimal" autocomplete="off"><span>g/mL</span>
+          </div>
+          <button class="big-btn meas-check" id="measCheck" data-i="check"></button>
+          <p class="note" id="measStatus" role="status"></p>
+        </div>
+        <!-- Density triangle: bottom-left of the scene on Intro, Compare and Mystery -->
+        <div class="panel tri-panel" data-for="intro compare mystery" style="left:10px;top:244px">
+          <h3 data-i="triangle"></h3>
+          <div class="tri" data-ia="triAria"><span class="m">m</span><span class="bar"></span><span class="d">D</span><span class="x">×</span><span class="v">V</span></div>
+        </div>
+
+        <button class="reset" id="resetBtn" data-ia="reset">↻</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLS STRIP under the scene: calculator (+ "How to solve" on Mystery) -->
+  <section id="tools" class="tools" hidden>
+    <div class="box">
+      <h3 data-i="calc"></h3>
+      <div class="keycalc" id="calcSim"></div>
+    </div>
+    <div class="box" data-for="mystery">
+      <h3 data-i="howTo"></h3>
+      <ol class="steps">
+        <li data-ih="step1"></li>
+        <li data-ih="step2"></li>
+        <li data-ih="step3"></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- TEST -->
+  <section id="test" class="test" hidden>
+    <div>
+      <h2 data-i="testTitle"></h2>
+      <p class="sub" data-ih="testSub"></p>
+      <ul class="clues" id="clues"></ul>
+      <div class="answer">
+        <label for="ansNum"><span data-i="yourAnswer"></span><input id="ansNum" inputmode="decimal" autocomplete="off" placeholder="?"></label>
+        <label for="ansUnit"><span data-i="unit"></span><select id="ansUnit"></select></label>
+        <button class="big-btn" id="checkBtn" data-i="check"></button>
+        <button class="big-btn alt" id="nextBtn" data-i="newProblem"></button>
+      </div>
+      <p class="msg" id="testMsg" role="status"></p>
+    </div>
+    <div class="side">
+      <div class="score">
+        <div><span data-i="scCorrect"></span><b id="scCorrect">0</b></div>
+        <div><span data-i="scTried"></span><b id="scTried">0</b></div>
+        <div><span data-i="scStreak"></span><b id="scStreak">0</b></div>
+      </div>
+      <div class="box">
+        <h3 data-i="triangle"></h3>
+        <div class="tri-wrap">
+            <div class="tri" data-ia="triAria"><span class="m">m</span><span class="bar"></span><span class="d">D</span><span class="x">×</span><span class="v">V</span></div>
+        </div>
+      </div>
+      <div class="box">
+        <button class="big-btn alt" id="speakBtn" style="font-size:16px;padding:6px 12px" data-i="readAloud"></button>
+        <button class="big-btn alt" id="hintBtn" style="font-size:16px;padding:6px 12px" aria-expanded="false"></button>
+        <div id="hintBox" hidden style="margin-top:10px">
+          <table class="unit-key">
+            <tr><td>g</td><td data-i="massL"></td></tr>
+            <tr><td>mL, cm³</td><td data-i="volumeL"></td></tr>
+            <tr><td>g/mL, g/cm³</td><td data-i="densityL"></td></tr>
+            <tr><td>1 mL</td><td>= 1 cm³</td></tr>
+            <tr class="no"><td>cm</td><td data-i="widthNote"></td></tr>
+            <tr class="no"><td>°F</td><td data-i="tempNote"></td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="box">
+        <h3 data-i="calc"></h3>
+        <div class="keycalc" id="calcTest"></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="narrow-note" data-i="narrow"></p>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="pop" id="pop" role="dialog" aria-modal="true" aria-labelledby="popTitle">
+    <h2><span class="badge" id="popBadge"></span><span id="popTitle"></span></h2>
+    <div class="body" id="popBody"></div>
+    <div class="actions">
+      <button class="big-btn alt" id="popSpeak" data-i="readAloud"></button>
+      <button class="big-btn" id="popClose">OK</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+/* =====================================================================
+   DENSITY LAB
+   Screens: Home, Intro, Compare, Mystery (all share one canvas scene), Test.
+   Units everywhere: grams (g), milliliters (mL = cm³), g/mL.
+   ===================================================================== */
+
+// =====================================================================
+//  LANGUAGES: English, Spanish, Vietnamese
+//  Every word students see lives here. {x} marks a blank that the code fills in.
+//  Science words match Density Detective: Densidad / Khối lượng riêng (density),
+//  Masa / Khối lượng (mass), Volumen / Thể tích (volume).
+//  NOTE for teacher: the Spanish and Vietnamese were machine-written. Please have a native speaker check them.
+// =====================================================================
+const LANG = {
+  en: {
+    speech: 'en-US',
+    say: { 'g': 'grams', 'mL': 'milliliters', 'cm³': 'cubic centimeters', 'g/mL': 'grams per milliliter', 'g/cm³': 'grams per cubic centimeter', 'cm': 'centimeters', '°F': 'degrees Fahrenheit' },
+    title: 'Density Lab',
+    lead: 'Drop blocks in water, measure mass and volume, and find density in g/mL.',
+    tab_home: 'Home', tab_intro: 'Intro', tab_compare: 'Compare', tab_mystery: 'Mystery', tab_test: 'Test',
+    card_intro: "Change one block's mass and volume. Watch the density.",
+    card_compare: 'Same mass, same volume, or same density. What changes?',
+    card_mystery: 'Weigh it, dunk it, and name the material.',
+    card_test: 'Use the units to find the missing value.',
+    sceneAria: 'Water tank with blocks. Drag blocks into the water.',
+    material: 'Material', custom: 'Custom', blocks: 'Blocks',
+    mass: 'Mass', volume: 'Volume', density: 'Density',
+    massL: 'mass', volumeL: 'volume', densityL: 'density', widthL: 'width', tempL: 'temperature',
+    theMass: 'the mass', theVolume: 'the volume', theDensity: 'the density',
+    massG: 'Mass (g)', volML: 'Volume (mL)', denGML: 'Density (g/mL)',
+    sameMass: 'Same Mass', sameVolume: 'Same Volume', sameDensity: 'Same Density',
+    showOn: 'Show on blocks',
+    waterNote: "1 mL = 1 cm³. Water's density is 1.00 g/mL. Blocks with a <b>lower</b> density float. Blocks with a <b>higher</b> density sink.",
+    decrease: 'Decrease {x}', increase: 'Increase {x}',
+    floats: '(floats)', sinks: '(sinks)', sameAsWater: '(same as water)',
+    q_mass: 'All four blocks have the same mass. Why do some take up more space? Which ones float?',
+    q_volume: 'All four blocks take up the same space. Which is heaviest? Does the heaviest one sink?',
+    q_density: 'All four blocks are made of the same stuff. Does size change whether they float?',
+    set: 'Set', random: 'Random', densityTable: 'Density Table',
+    tableHead: 'Density in g/mL (same as g/cm³)',
+    tableNote: 'Typical values at room temperature. Real wood, brick, and foam vary.',
+    nameEach: 'Name each block', howTo: 'How to solve',
+    step1: 'Put a block on the <b>scale</b>. Write the mass (g).',
+    step2: 'Drop it in the water. Volume = new level − 5000 mL.',
+    step3: 'It floats? <b>Hold it under</b> the water to read the full volume.',
+    step4: 'Density = mass ÷ volume. Match it in the table.',
+    reset: 'Reset this screen', water: 'Water',
+    triangle: 'Density triangle', triAria: 'Density triangle: m on top, D times V on the bottom', calc: 'Calculator',
+    choose: 'Choose…', check: 'Check', matFor: 'Material for block {b}',
+    idStart: 'Pick a material for a block, then press Check.',
+    measureT: 'Measure a block', needAll: 'Fill in mass, volume, and density.', doneCount: 'Done: {n} of {t} blocks', tryAgain: 'Try again',
+    mOkT: 'Correct! You measured {b}.', mOkB: 'Mass {m} g, volume {v} mL, density {d} g/mL. That matches {mat} in the Density Table.',
+    mBadT: 'Try again', mGood: '{q}: ✓ correct',
+    massBad: '<b>Mass:</b> put {b} on the scale and read the grams.',
+    volBad: '<b>Volume:</b> read the water level with {b} in the water, then subtract 5000 mL. If it floats, hold it all the way under the water.',
+    denBadYours: '<b>Density:</b> divide mass by volume. With your numbers: {m} g ÷ {v} mL = {d} g/mL.',
+    denBad: '<b>Density</b> = mass ÷ volume.',
+    reveal: 'Here are the right measurements: mass {m} g, volume {v} mL, density {d} g/mL.',
+    pickFirstT: 'Pick a material first',
+    pickFirstB: 'Use the menu next to <b>{b}</b> to choose a material, then press Check.',
+    mysMass: 'Mass (on the scale) = {m} g',
+    mysVol: 'Volume: water rises from 5000 mL to {lv} mL → V = {v} mL',
+    mysFloat: "This block <b>floats</b> (its density is less than water's 1.00 g/mL). A floating block only pushes aside part of its volume, so you must <b>hold it all the way under</b> the water to read its full volume.",
+    mysOkT: 'Correct! {b} is {mat}.',
+    mysOkB: '{d} g/mL matches {mat} ({md} g/mL) in the Density Table.',
+    mysOkS: 'Correct! {b} is {mat}. Density equals {m} grams divided by {v} milliliters, which is {d} grams per milliliter.',
+    mysBadT: 'Not quite. {b} is {mat}.',
+    mysYou: 'You picked {g} ({gd} g/mL).',
+    mysClosest: 'The closest match in the Density Table is <b>{mat}</b> at {md} g/mL.',
+    mysBadS: 'Not quite. You picked {g}. {b} is {mat}. Its mass is {m} grams. Its volume is {v} milliliters. Mass divided by volume is {d} grams per milliliter, which matches {mat}.',
+    testTitle: 'Find the missing value',
+    testSub: "You get 4 clues. Two of them don't help. Use the <b>units</b> to decide what is missing, then solve.",
+    yourAnswer: 'Your answer', unit: 'Unit', newProblem: 'New problem', nextProblem: 'Next problem', ok: 'OK',
+    scCorrect: 'Correct', scTried: 'Tried', scStreak: 'Streak',
+    readAloud: 'Read aloud', showHint: 'Show unit hint', hideHint: 'Hide unit hint',
+    widthNote: 'width (not used for density)', tempNote: 'temperature (not used for density)',
+    needBoth: 'Type a number and choose a unit.',
+    notNeeded: '(not needed)', and: 'and', or: 'or',
+    mlcmCancel: '(1 mL = 1 cm³, so these units cancel.)',
+    sameThing: '(Same thing: {a} g/mL = {a} g/cm³.)', sameVol: '(Same thing: {a} mL = {a} cm³.)',
+    tOkT: 'Correct!',
+    tOkB: 'The missing value was <b>{q}</b>. You had {have}.',
+    tExtra: "Width and temperature were extra clues. Density doesn't use them.",
+    tOkS: 'Correct! The missing value was {q}. {eq}',
+    tBadT: 'Not quite',
+    tYour: 'Your answer: {a}.',
+    numOkUnitBad: 'Your number is right, but the unit is wrong.',
+    unitOkNumBad: 'Your unit is right, but the number is off.',
+    bothBad: 'The number and the unit are both off.',
+    step1T: '1. Sort the clues by unit:',
+    step2T: "<b>2. What's missing?</b> You have {have}, so the missing value is <b>{q}</b> (unit: {u}).",
+    step3T: '3. Solve:',
+    tBadS: 'Not quite. Your answer was {a}. {what} You have {have}, so the missing value is {q}. {eq} Width and temperature are not used for density.',
+    clueSpeech: 'Here are your clues. {c} One value is missing. Use the units to decide what is missing, then solve.',
+    sayDensity: 'Density equals mass divided by volume: {m} grams divided by {v} {vu} equals {d} {du}.',
+    sayVolume: 'Volume equals mass divided by density: {m} grams divided by {d} {du} equals {v} {vu}.',
+    sayMass: 'Mass equals density times volume: {d} {du} times {v} {vu} equals {m} grams.',
+    clear: 'Clear', useResult: 'Use result as my answer',
+    calcOps: 'Use numbers and + − × ÷ only', calcDiv0: 'Can’t divide by zero', calcFinish: 'Finish the problem first',
+    noVoice: 'This device has no reading voice for this language.',
+    narrow: 'Tip: this works best on a Chromebook or computer. On a phone, turn it sideways or scroll the scene left and right.',
+    mat_styrofoam: 'Styrofoam', mat_wood: 'Wood (pine)', mat_ice: 'Ice', mat_brick: 'Brick', mat_aluminum: 'Aluminum',
+    mat_diamond: 'Diamond', mat_titanium: 'Titanium', mat_steel: 'Steel', mat_copper: 'Copper', mat_silver: 'Silver',
+    mat_lead: 'Lead', mat_gold: 'Gold',
+  },
+
+  es: {
+    speech: 'es-US',
+    say: { 'g': 'gramos', 'mL': 'mililitros', 'cm³': 'centímetros cúbicos', 'g/mL': 'gramos por mililitro', 'g/cm³': 'gramos por centímetro cúbico', 'cm': 'centímetros', '°F': 'grados Fahrenheit' },
+    title: 'Laboratorio de densidad',
+    lead: 'Echa bloques al agua, mide la masa y el volumen, y encuentra la densidad en g/mL.',
+    tab_home: 'Inicio', tab_intro: 'Introducción', tab_compare: 'Comparar', tab_mystery: 'Misterio', tab_test: 'Examen',
+    card_intro: 'Cambia la masa y el volumen de un bloque. Observa la densidad.',
+    card_compare: 'Misma masa, mismo volumen o misma densidad. ¿Qué cambia?',
+    card_mystery: 'Pésalo, sumérgelo y nombra el material.',
+    card_test: 'Usa las unidades para encontrar el valor que falta.',
+    sceneAria: 'Tanque de agua con bloques. Arrastra los bloques al agua.',
+    material: 'Material', custom: 'Personalizado', blocks: 'Bloques',
+    mass: 'Masa', volume: 'Volumen', density: 'Densidad',
+    massL: 'masa', volumeL: 'volumen', densityL: 'densidad', widthL: 'ancho', tempL: 'temperatura',
+    theMass: 'la masa', theVolume: 'el volumen', theDensity: 'la densidad',
+    massG: 'Masa (g)', volML: 'Volumen (mL)', denGML: 'Densidad (g/mL)',
+    sameMass: 'Misma masa', sameVolume: 'Mismo volumen', sameDensity: 'Misma densidad',
+    showOn: 'Mostrar en los bloques',
+    waterNote: '1 mL = 1 cm³. La densidad del agua es 1.00 g/mL. Los bloques con densidad <b>menor</b> flotan. Los bloques con densidad <b>mayor</b> se hunden.',
+    decrease: 'Bajar {x}', increase: 'Subir {x}',
+    floats: '(flota)', sinks: '(se hunde)', sameAsWater: '(igual que el agua)',
+    q_mass: 'Los cuatro bloques tienen la misma masa. ¿Por qué algunos ocupan más espacio? ¿Cuáles flotan?',
+    q_volume: 'Los cuatro bloques ocupan el mismo espacio. ¿Cuál es el más pesado? ¿El más pesado se hunde?',
+    q_density: 'Los cuatro bloques están hechos del mismo material. ¿El tamaño cambia si flotan o no?',
+    set: 'Grupo', random: 'Al azar', densityTable: 'Tabla de densidades',
+    tableHead: 'Densidad en g/mL (igual que g/cm³)',
+    tableNote: 'Valores típicos a temperatura ambiente. La madera, el ladrillo y el unicel reales varían.',
+    nameEach: 'Nombra cada bloque', howTo: 'Cómo resolver',
+    step1: 'Pon un bloque en la <b>báscula</b>. Anota la masa (g).',
+    step2: 'Échalo al agua. Volumen = nuevo nivel − 5000 mL.',
+    step3: '¿Flota? <b>Mantenlo bajo</b> el agua para leer el volumen completo.',
+    step4: 'Densidad = masa ÷ volumen. Búscala en la tabla.',
+    reset: 'Reiniciar esta pantalla', water: 'Agua',
+    triangle: 'Triángulo de densidad', triAria: 'Triángulo de densidad: m arriba, D por V abajo', calc: 'Calculadora',
+    choose: 'Elige…', check: 'Revisar', matFor: 'Material del bloque {b}',
+    idStart: 'Elige un material para un bloque y luego presiona Revisar.',
+    measureT: 'Mide un bloque', needAll: 'Escribe la masa, el volumen y la densidad.', doneCount: 'Terminados: {n} de {t} bloques', tryAgain: 'Intentar otra vez',
+    mOkT: '¡Correcto! Mediste {b}.', mOkB: 'Masa {m} g, volumen {v} mL, densidad {d} g/mL. Coincide con {mat} en la Tabla de densidades.',
+    mBadT: 'Inténtalo otra vez', mGood: '{q}: ✓ correcto',
+    massBad: '<b>Masa:</b> pon {b} en la báscula y lee los gramos.',
+    volBad: '<b>Volumen:</b> lee el nivel del agua con {b} adentro y réstale 5000 mL. Si flota, mantenlo completamente bajo el agua.',
+    denBadYours: '<b>Densidad:</b> divide la masa entre el volumen. Con tus números: {m} g ÷ {v} mL = {d} g/mL.',
+    denBad: '<b>Densidad</b> = masa ÷ volumen.',
+    reveal: 'Estas son las medidas correctas: masa {m} g, volumen {v} mL, densidad {d} g/mL.',
+    pickFirstT: 'Primero elige un material',
+    pickFirstB: 'Usa el menú junto a <b>{b}</b> para elegir un material y luego presiona Revisar.',
+    mysMass: 'Masa (en la báscula) = {m} g',
+    mysVol: 'Volumen: el agua sube de 5000 mL a {lv} mL → V = {v} mL',
+    mysFloat: 'Este bloque <b>flota</b> (su densidad es menor que la del agua, 1.00 g/mL). Un bloque que flota solo desplaza parte de su volumen, así que debes <b>mantenerlo completamente bajo</b> el agua para leer su volumen completo.',
+    mysOkT: '¡Correcto! {b} es {mat}.',
+    mysOkB: '{d} g/mL coincide con {mat} ({md} g/mL) en la Tabla de densidades.',
+    mysOkS: '¡Correcto! {b} es {mat}. La densidad es {m} gramos entre {v} mililitros, que es {d} gramos por mililitro.',
+    mysBadT: 'Casi. {b} es {mat}.',
+    mysYou: 'Elegiste {g} ({gd} g/mL).',
+    mysClosest: 'Lo que más se acerca en la Tabla de densidades es <b>{mat}</b>, con {md} g/mL.',
+    mysBadS: 'Casi. Elegiste {g}. {b} es {mat}. Su masa es {m} gramos. Su volumen es {v} mililitros. La masa entre el volumen es {d} gramos por mililitro, que coincide con {mat}.',
+    testTitle: 'Encuentra el valor que falta',
+    testSub: 'Tienes 4 pistas. Dos no sirven. Usa las <b>unidades</b> para decidir qué falta y luego resuelve.',
+    yourAnswer: 'Tu respuesta', unit: 'Unidad', newProblem: 'Nuevo problema', nextProblem: 'Siguiente problema', ok: 'OK',
+    scCorrect: 'Correctas', scTried: 'Intentos', scStreak: 'Racha',
+    readAloud: 'Leer en voz alta', showHint: 'Mostrar pista de unidades', hideHint: 'Ocultar pista de unidades',
+    widthNote: 'ancho (no se usa para la densidad)', tempNote: 'temperatura (no se usa para la densidad)',
+    needBoth: 'Escribe un número y elige una unidad.',
+    notNeeded: '(no se necesita)', and: 'y', or: 'o',
+    mlcmCancel: '(1 mL = 1 cm³, así que estas unidades se cancelan.)',
+    sameThing: '(Es lo mismo: {a} g/mL = {a} g/cm³.)', sameVol: '(Es lo mismo: {a} mL = {a} cm³.)',
+    tOkT: '¡Correcto!',
+    tOkB: 'El valor que faltaba era <b>{q}</b>. Tenías {have}.',
+    tExtra: 'El ancho y la temperatura eran pistas de más. La densidad no las usa.',
+    tOkS: '¡Correcto! El valor que faltaba era {q}. {eq}',
+    tBadT: 'Casi',
+    tYour: 'Tu respuesta: {a}.',
+    numOkUnitBad: 'Tu número es correcto, pero la unidad no.',
+    unitOkNumBad: 'Tu unidad es correcta, pero el número no.',
+    bothBad: 'El número y la unidad no son correctos.',
+    step1T: '1. Ordena las pistas por unidad:',
+    step2T: '<b>2. ¿Qué falta?</b> Tienes {have}, así que el valor que falta es <b>{q}</b> (unidad: {u}).',
+    step3T: '3. Resuelve:',
+    tBadS: 'Casi. Tu respuesta fue {a}. {what} Tienes {have}, así que el valor que falta es {q}. {eq} El ancho y la temperatura no se usan para la densidad.',
+    clueSpeech: 'Estas son tus pistas. {c} Falta un valor. Usa las unidades para decidir qué falta y luego resuelve.',
+    sayDensity: 'Densidad es igual a masa entre volumen: {m} gramos entre {v} {vu} es igual a {d} {du}.',
+    sayVolume: 'Volumen es igual a masa entre densidad: {m} gramos entre {d} {du} es igual a {v} {vu}.',
+    sayMass: 'Masa es igual a densidad por volumen: {d} {du} por {v} {vu} es igual a {m} gramos.',
+    clear: 'Borrar', useResult: 'Usar el resultado como mi respuesta',
+    calcOps: 'Usa solo números y + − × ÷', calcDiv0: 'No se puede dividir entre cero', calcFinish: 'Termina el problema primero',
+    noVoice: 'Este dispositivo no tiene voz de lectura para este idioma.',
+    narrow: 'Consejo: funciona mejor en una Chromebook o computadora. En un teléfono, gíralo de lado o desliza la escena a la izquierda y a la derecha.',
+    mat_styrofoam: 'Unicel', mat_wood: 'Madera (pino)', mat_ice: 'Hielo', mat_brick: 'Ladrillo', mat_aluminum: 'Aluminio',
+    mat_diamond: 'Diamante', mat_titanium: 'Titanio', mat_steel: 'Acero', mat_copper: 'Cobre', mat_silver: 'Plata',
+    mat_lead: 'Plomo', mat_gold: 'Oro',
+  },
+
+  vi: {
+    speech: 'vi-VN',
+    say: { 'g': 'gam', 'mL': 'mi-li-lít', 'cm³': 'xăng-ti-mét khối', 'g/mL': 'gam trên mi-li-lít', 'g/cm³': 'gam trên xăng-ti-mét khối', 'cm': 'xăng-ti-mét', '°F': 'độ F' },
+    title: 'Phòng thí nghiệm khối lượng riêng',
+    lead: 'Thả khối vào nước, đo khối lượng và thể tích, rồi tìm khối lượng riêng theo g/mL.',
+    tab_home: 'Trang chủ', tab_intro: 'Giới thiệu', tab_compare: 'So sánh', tab_mystery: 'Bí ẩn', tab_test: 'Kiểm tra',
+    card_intro: 'Thay đổi khối lượng và thể tích của một khối. Quan sát khối lượng riêng.',
+    card_compare: 'Cùng khối lượng, cùng thể tích, hoặc cùng khối lượng riêng. Điều gì thay đổi?',
+    card_mystery: 'Cân nó, nhúng nó vào nước, rồi gọi tên vật liệu.',
+    card_test: 'Dùng đơn vị để tìm giá trị còn thiếu.',
+    sceneAria: 'Bể nước có các khối. Kéo các khối vào nước.',
+    material: 'Vật liệu', custom: 'Tùy chỉnh', blocks: 'Các khối',
+    mass: 'Khối lượng', volume: 'Thể tích', density: 'Khối lượng riêng',
+    massL: 'khối lượng', volumeL: 'thể tích', densityL: 'khối lượng riêng', widthL: 'chiều rộng', tempL: 'nhiệt độ',
+    theMass: 'khối lượng', theVolume: 'thể tích', theDensity: 'khối lượng riêng',
+    massG: 'Khối lượng (g)', volML: 'Thể tích (mL)', denGML: 'Khối lượng riêng (g/mL)',
+    sameMass: 'Cùng khối lượng', sameVolume: 'Cùng thể tích', sameDensity: 'Cùng khối lượng riêng',
+    showOn: 'Hiện trên các khối',
+    waterNote: '1 mL = 1 cm³. Khối lượng riêng của nước là 1.00 g/mL. Khối có khối lượng riêng <b>nhỏ hơn</b> thì nổi. Khối có khối lượng riêng <b>lớn hơn</b> thì chìm.',
+    decrease: 'Giảm {x}', increase: 'Tăng {x}',
+    floats: '(nổi)', sinks: '(chìm)', sameAsWater: '(bằng nước)',
+    q_mass: 'Cả bốn khối có cùng khối lượng. Vì sao có khối chiếm nhiều chỗ hơn? Khối nào nổi?',
+    q_volume: 'Cả bốn khối chiếm cùng một chỗ. Khối nào nặng nhất? Khối nặng nhất có chìm không?',
+    q_density: 'Cả bốn khối làm bằng cùng một chất. Kích thước có làm thay đổi việc nổi hay chìm không?',
+    set: 'Bộ', random: 'Ngẫu nhiên', densityTable: 'Bảng khối lượng riêng',
+    tableHead: 'Khối lượng riêng theo g/mL (giống g/cm³)',
+    tableNote: 'Giá trị thường gặp ở nhiệt độ phòng. Gỗ, gạch và xốp thật có thể khác nhau.',
+    nameEach: 'Gọi tên từng khối', howTo: 'Cách giải',
+    step1: 'Đặt một khối lên <b>cân</b>. Ghi lại khối lượng (g).',
+    step2: 'Thả nó vào nước. Thể tích = mực nước mới − 5000 mL.',
+    step3: 'Nó nổi? <b>Giữ nó chìm</b> dưới nước để đọc toàn bộ thể tích.',
+    step4: 'Khối lượng riêng = khối lượng ÷ thể tích. Tìm số đó trong bảng.',
+    reset: 'Làm lại màn hình này', water: 'Nước',
+    triangle: 'Tam giác khối lượng riêng', triAria: 'Tam giác khối lượng riêng: m ở trên, D nhân V ở dưới', calc: 'Máy tính',
+    choose: 'Chọn…', check: 'Chấm bài', matFor: 'Vật liệu của khối {b}',
+    idStart: 'Chọn vật liệu cho một khối, rồi bấm Chấm bài.',
+    measureT: 'Đo một khối', needAll: 'Hãy điền khối lượng, thể tích và khối lượng riêng.', doneCount: 'Đã xong: {n}/{t} khối', tryAgain: 'Thử lại',
+    mOkT: 'Đúng rồi! Em đã đo xong {b}.', mOkB: 'Khối lượng {m} g, thể tích {v} mL, khối lượng riêng {d} g/mL. Khớp với {mat} trong Bảng khối lượng riêng.',
+    mBadT: 'Hãy thử lại', mGood: '{q}: ✓ đúng',
+    massBad: '<b>Khối lượng:</b> đặt {b} lên cân và đọc số gam.',
+    volBad: '<b>Thể tích:</b> đọc mực nước khi {b} ở trong nước, rồi trừ 5000 mL. Nếu nó nổi, hãy giữ nó chìm hẳn dưới nước.',
+    denBadYours: '<b>Khối lượng riêng:</b> lấy khối lượng chia cho thể tích. Với số của em: {m} g ÷ {v} mL = {d} g/mL.',
+    denBad: '<b>Khối lượng riêng</b> = khối lượng ÷ thể tích.',
+    reveal: 'Đây là số đo đúng: khối lượng {m} g, thể tích {v} mL, khối lượng riêng {d} g/mL.',
+    pickFirstT: 'Hãy chọn vật liệu trước',
+    pickFirstB: 'Dùng menu bên cạnh <b>{b}</b> để chọn vật liệu, rồi bấm Chấm bài.',
+    mysMass: 'Khối lượng (trên cân) = {m} g',
+    mysVol: 'Thể tích: nước dâng từ 5000 mL lên {lv} mL → V = {v} mL',
+    mysFloat: 'Khối này <b>nổi</b> (khối lượng riêng của nó nhỏ hơn của nước, 1.00 g/mL). Khối nổi chỉ chiếm chỗ một phần thể tích của nó trong nước, nên em phải <b>giữ nó chìm hẳn</b> dưới nước để đọc toàn bộ thể tích.',
+    mysOkT: 'Đúng rồi! {b} là {mat}.',
+    mysOkB: '{d} g/mL khớp với {mat} ({md} g/mL) trong Bảng khối lượng riêng.',
+    mysOkS: 'Đúng rồi! {b} là {mat}. Khối lượng riêng bằng {m} gam chia cho {v} mi-li-lít, bằng {d} gam trên mi-li-lít.',
+    mysBadT: 'Chưa đúng. {b} là {mat}.',
+    mysYou: 'Em đã chọn {g} ({gd} g/mL).',
+    mysClosest: 'Giá trị gần nhất trong Bảng khối lượng riêng là <b>{mat}</b>, {md} g/mL.',
+    mysBadS: 'Chưa đúng. Em đã chọn {g}. {b} là {mat}. Khối lượng của nó là {m} gam. Thể tích của nó là {v} mi-li-lít. Khối lượng chia cho thể tích là {d} gam trên mi-li-lít, khớp với {mat}.',
+    testTitle: 'Tìm giá trị còn thiếu',
+    testSub: 'Em có 4 gợi ý. Hai gợi ý không giúp được. Dùng <b>đơn vị</b> để biết cái gì còn thiếu, rồi giải.',
+    yourAnswer: 'Đáp án của em', unit: 'Đơn vị', newProblem: 'Bài mới', nextProblem: 'Bài tiếp theo', ok: 'OK',
+    scCorrect: 'Đúng', scTried: 'Đã làm', scStreak: 'Chuỗi đúng',
+    readAloud: 'Đọc to', showHint: 'Hiện gợi ý đơn vị', hideHint: 'Ẩn gợi ý đơn vị',
+    widthNote: 'chiều rộng (không dùng để tính khối lượng riêng)', tempNote: 'nhiệt độ (không dùng để tính khối lượng riêng)',
+    needBoth: 'Hãy nhập một số và chọn đơn vị.',
+    notNeeded: '(không cần)', and: 'và', or: 'hoặc',
+    mlcmCancel: '(1 mL = 1 cm³, nên các đơn vị này triệt tiêu nhau.)',
+    sameThing: '(Giống nhau: {a} g/mL = {a} g/cm³.)', sameVol: '(Giống nhau: {a} mL = {a} cm³.)',
+    tOkT: 'Đúng rồi!',
+    tOkB: 'Giá trị còn thiếu là <b>{q}</b>. Em đã có {have}.',
+    tExtra: 'Chiều rộng và nhiệt độ là gợi ý thừa. Khối lượng riêng không dùng đến chúng.',
+    tOkS: 'Đúng rồi! Giá trị còn thiếu là {q}. {eq}',
+    tBadT: 'Chưa đúng',
+    tYour: 'Đáp án của em: {a}.',
+    numOkUnitBad: 'Số của em đúng, nhưng đơn vị sai.',
+    unitOkNumBad: 'Đơn vị của em đúng, nhưng con số chưa đúng.',
+    bothBad: 'Cả con số và đơn vị đều chưa đúng.',
+    step1T: '1. Phân loại gợi ý theo đơn vị:',
+    step2T: '<b>2. Còn thiếu gì?</b> Em có {have}, nên giá trị còn thiếu là <b>{q}</b> (đơn vị: {u}).',
+    step3T: '3. Giải:',
+    tBadS: 'Chưa đúng. Đáp án của em là {a}. {what} Em có {have}, nên giá trị còn thiếu là {q}. {eq} Chiều rộng và nhiệt độ không dùng để tính khối lượng riêng.',
+    clueSpeech: 'Đây là các gợi ý. {c} Có một giá trị còn thiếu. Dùng đơn vị để biết cái gì còn thiếu, rồi giải.',
+    sayDensity: 'Khối lượng riêng bằng khối lượng chia cho thể tích: {m} gam chia cho {v} {vu} bằng {d} {du}.',
+    sayVolume: 'Thể tích bằng khối lượng chia cho khối lượng riêng: {m} gam chia cho {d} {du} bằng {v} {vu}.',
+    sayMass: 'Khối lượng bằng khối lượng riêng nhân thể tích: {d} {du} nhân {v} {vu} bằng {m} gam.',
+    clear: 'Xóa', useResult: 'Dùng kết quả làm đáp án',
+    calcOps: 'Chỉ dùng số và + − × ÷', calcDiv0: 'Không thể chia cho 0', calcFinish: 'Hãy viết xong phép tính trước',
+    noVoice: 'Thiết bị này không có giọng đọc cho ngôn ngữ này.',
+    narrow: 'Mẹo: dùng tốt nhất trên Chromebook hoặc máy tính. Trên điện thoại, hãy xoay ngang hoặc kéo cảnh sang trái và phải.',
+    mat_styrofoam: 'Xốp', mat_wood: 'Gỗ (thông)', mat_ice: 'Nước đá', mat_brick: 'Gạch', mat_aluminum: 'Nhôm',
+    mat_diamond: 'Kim cương', mat_titanium: 'Titan', mat_steel: 'Thép', mat_copper: 'Đồng', mat_silver: 'Bạc',
+    mat_lead: 'Chì', mat_gold: 'Vàng',
+  },
+};
+
+// Current language (remembered in this browser). Falls back to English for any missing word.
+let lang = 'en';
+try { const s = localStorage.getItem('densityLab.lang'); if (LANG[s]) lang = s; } catch (e) {}
+function t(key, vars = {}) {
+  const s = LANG[lang][key] ?? LANG.en[key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+}
+const matName = k => t('mat_' + k);
+const sayUnit = u => LANG[lang].say[u] || u;
+
+// ---------- Scene geometry (logical pixels; the scene is scaled to fit) ----------
+const W = 1000, H = 500;
+const GY = 230;              // ground line
+const PL = 300, PR = 700;    // pool left / right walls
+const PB = 470;              // pool floor
+const WATER0 = 5000;         // starting water volume (mL)
+const ML_PER_PX = WATER0 / 120;  // water starts 120 px deep
+const SCALE = { x1: 24, x2: 136, top: GY - 24 };   // kitchen scale (Mystery only)
+const FONT = '"Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, sans-serif';
+const RHO_WATER = 1.00;      // fresh water, g/mL
+
+// Block edge length on screen grows with the cube root of volume.
+const sideOf = V => 9 * Math.cbrt(V);
+
+// Typical densities at room temperature (names are in LANG as mat_...), g/cm³ (= g/mL).
+// Sources: CRC Handbook of Chemistry & Physics; Engineering ToolBox. Wood, brick, foam vary a lot by type.
+const MATS = {
+  styrofoam: { d: 0.05 },
+  wood:      { d: 0.50 },
+  ice:       { d: 0.92 },
+  brick:     { d: 2.00 },
+  aluminum:  { d: 2.70 },
+  diamond:   { d: 3.51 },
+  titanium:  { d: 4.51 },
+  steel:     { d: 7.85 },
+  copper:    { d: 8.96 },
+  silver:    { d: 10.49 },
+  lead:      { d: 11.34 },
+  gold:      { d: 19.32 },
+};
+
+// ---------- Small helpers ----------
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// Numbers always use a decimal POINT and no thousands commas, to match the calculator and answer box.
+const fmt = (n, dec = 1) => Number(n).toLocaleString('en-US', { maximumFractionDigits: dec, useGrouping: false });
+const fmtFixed = (n, dec) => Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: false });
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function store(key, val) { try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) { return null; } }
+
+// ---------- App state ----------
+const S = {
+  screen: 'home',
+  blocks: [],
+  show: { mass: true, vol: false, den: false },
+  intro: { mat: 'wood', m: 250, V: 500 },
+  compare: { mode: 'volume', val: { mass: 250, volume: 500, density: 0.5 } },
+  mystery: { set: '1', sel: null, work: {} },   // work[id] = { m, v, d, tries, done }
+};
+
+// =====================================================================
+//  BLOCKS + WATER PHYSICS
+// =====================================================================
+function makeBlock(id, label, color, m, V, extra = {}) {
+  return { id, label, color, m, V, x: 0, y: GY, loc: 'ground', held: false, settled: false, ...extra };
+}
+
+// Volume of water a block pushes aside, given the current water surface y (wt).
+function displaced(b, wt) {
+  const s = sideOf(b.V), cx = b.x + s / 2;
+  const overPool = cx > PL && cx < PR;
+  if (!(b.loc === 'pool' || (b.held && overPool))) return 0;
+  // A block resting in the water: floaters push aside their own mass of water, sinkers their whole volume.
+  if (b.settled && !b.held) return Math.min(b.m / RHO_WATER, b.V);
+  const top = b.y - s;
+  const frac = clamp((b.y - Math.max(top, wt)) / s, 0, 1);
+  return frac * b.V;
+}
+
+// Water surface position. The level depends on the blocks and the blocks depend on the level,
+// so we repeat the calculation a few times until it settles.
+function water() {
+  let wt = PB - WATER0 / ML_PER_PX, total = 0;
+  for (let i = 0; i < 6; i++) {
+    total = S.blocks.reduce((sum, b) => sum + displaced(b, wt), 0);
+    wt = PB - (WATER0 + total) / ML_PER_PX;
+  }
+  return { wt, level: WATER0 + total };
+}
+
+// Move every block that is not being held toward its resting spot.
+function stepPhysics() {
+  const { wt } = water();
+  for (const b of S.blocks) {
+    if (b.held) continue;
+    const s = sideOf(b.V), d = b.m / b.V;
+    let target;
+    if (b.loc === 'pool') target = d > RHO_WATER ? PB : Math.min(PB, wt + (d / RHO_WATER) * s);
+    else if (b.loc === 'scale') target = SCALE.top;
+    else target = GY;
+    const diff = target - b.y;
+    if (Math.abs(diff) < 0.3) { b.y = target; b.settled = true; }
+    else { b.settled = false; b.y += diff * (b.loc === 'pool' ? 0.08 : 0.22); }
+  }
+}
+
+// Find the nearest x (to b.x) inside [lo, hi] where block b doesn't overlap the given intervals.
+function freeX(b, lo, hi, taken) {
+  const s = sideOf(b.V);
+  if (hi < lo) return null;
+  const cands = [clamp(b.x, lo, hi), lo, hi];
+  for (const [l, r] of taken) cands.push(l - s - 3, r + 3);
+  const ok = x => x >= lo - 0.01 && x <= hi + 0.01 && taken.every(([l, r]) => x + s <= l || x >= r);
+  let best = null;
+  for (const x of cands) if (ok(x) && (best === null || Math.abs(x - b.x) < Math.abs(best - b.x))) best = x;
+  return best;
+}
+const spans = (b, which) => S.blocks.filter(o => o !== b && !o.held && which(o)).map(o => [o.x, o.x + sideOf(o.V)]);
+function groundTaken(b) {
+  const t = spans(b, o => o.loc === 'ground');
+  if (S.screen === 'mystery') t.push([SCALE.x1 - 4, SCALE.x2 + 4]);
+  return t;
+}
+
+// Decide where a dropped block lands: on the scale, in the pool, or on the ground.
+function placeBlock(b) {
+  const s = sideOf(b.V), cx = b.x + s / 2;
+  if (S.screen === 'mystery' && cx > SCALE.x1 - 12 && cx < SCALE.x2 + 12 && !S.blocks.some(o => o !== b && o.loc === 'scale')) {
+    b.x = (SCALE.x1 + SCALE.x2) / 2 - s / 2; b.loc = 'scale'; return;
+  }
+  if (cx > PL && cx < PR) {
+    const x = freeX(b, PL + 3, PR - 3 - s, spans(b, o => o.loc === 'pool'));
+    if (x !== null) { b.x = x; b.loc = 'pool'; return; }
+  }
+  const left = [6, PL - 6 - s], right = [PR + 6, W - 14 - s];
+  const zones = cx <= W / 2 ? [left, right] : [right, left];
+  for (const [lo, hi] of zones) {
+    const x = freeX(b, lo, hi, groundTaken(b));
+    if (x !== null) { b.x = x; b.loc = 'ground'; if (b.y > GY) b.y = GY; return; }
+  }
+  b.loc = 'ground'; b.y = Math.min(b.y, GY);   // nowhere free: leave it where it is
+}
+
+// Line blocks up on the ground: `leftIds` end just left of the pool, the rest start right of the pool.
+function layoutHomes(list, leftIds) {
+  let cur = PL - 12;
+  const minLeft = S.screen === 'mystery' ? SCALE.x2 + 10 : 6;
+  for (const b of list.filter(b => leftIds.includes(b.id)).reverse()) {
+    const s = sideOf(b.V); b.x = Math.max(minLeft, cur - s); cur = b.x - 8; b.loc = 'ground'; b.y = GY;
+  }
+  cur = PR + 12;
+  for (const b of list.filter(b => !leftIds.includes(b.id))) {
+    const s = sideOf(b.V); b.x = Math.min(W - 14 - s, cur); cur = b.x + s + 8; b.loc = 'ground'; b.y = GY;
+  }
+}
+
+// After a slider changes block sizes, keep pool blocks where they are (nudging if they overlap)
+// and send ground blocks back to their starting spots.
+function refit(leftIds) {
+  layoutHomes(S.blocks.filter(b => b.loc === 'ground' && !b.held), leftIds);
+  for (const b of S.blocks) if (b.loc === 'pool' && !b.held) placeBlock(b);
+  for (const b of S.blocks) b.settled = false;
+}
+
+// =====================================================================
+//  DRAWING
+// =====================================================================
+const canvas = $('scene'), ctx = canvas.getContext('2d');
+let viewScale = 1;
+
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function tag(text, x, y, { bold = false, size = 15, bg = '#fff', fg = '#111', pad = 5 } = {}) {
+  ctx.font = `${bold ? 700 : 400} ${size}px ${FONT}`;
+  const w = ctx.measureText(text).width + pad * 2, h = size + 8;
+  rr(x, y, w, h, 4); ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = '#444'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.fillText(text, x + pad, y + h / 2 + 1);
+  return { w, h };
+}
+function shade(hex, amt) {   // lighten (amt>0) or darken (amt<0) a #rrggbb colour
+  const n = parseInt(hex.slice(1), 16);
+  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = v => clamp(Math.round(amt > 0 ? v + (255 - v) * amt : v * (1 + amt)), 0, 255);
+  return `rgb(${f(r)},${f(g)},${f(b)})`;
+}
+
+function drawBackground() {
+  let g = ctx.createLinearGradient(0, 0, 0, GY - 70);
+  g.addColorStop(0, '#f7a072'); g.addColorStop(1, '#fde4c3');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, GY - 70);
+  g = ctx.createLinearGradient(0, GY - 70, 0, GY - 30);      // sea on the horizon
+  g.addColorStop(0, '#3a8fa0'); g.addColorStop(1, '#2a6f80');
+  ctx.fillStyle = g; ctx.fillRect(0, GY - 70, W, 40);
+  ctx.fillStyle = '#d9bf8c'; ctx.fillRect(0, GY - 30, W, 30);  // beach
+  ctx.fillStyle = '#cfa96e'; ctx.fillRect(0, GY, W, H - GY);   // sand bench
+  // pool: back wall, side walls, floor
+  ctx.fillStyle = '#c6e3e1'; ctx.fillRect(PL, GY - 10, PR - PL, PB - GY + 10);
+  ctx.fillStyle = '#5f8f94'; ctx.fillRect(PL - 6, GY - 10, 6, PB - GY + 10); ctx.fillRect(PR, GY - 10, 6, PB - GY + 10);
+  ctx.fillStyle = '#a98d63'; ctx.fillRect(PL, PB - 14, PR - PL, 14);
+}
+
+function drawScale() {
+  const { x1, x2, top } = SCALE;
+  ctx.fillStyle = '#c9ced3'; ctx.fillRect(x1, top + 6, x2 - x1, GY - top - 6);
+  ctx.fillStyle = '#e9ecef'; rr(x1 + 6, top, x2 - x1 - 12, 7, 3); ctx.fill();
+  ctx.fillStyle = '#9aa1a8'; ctx.fillRect(x2, top + 6, 6, GY - top - 6);
+  const on = S.blocks.find(b => b.loc === 'scale' && b.settled);
+  const txt = (on ? fmtFixed(on.m, 1) : '0.0') + ' g';
+  ctx.font = `700 15px ${FONT}`;
+  const w = ctx.measureText(txt).width + 12;
+  rr((x1 + x2) / 2 - w / 2, top + 9, w, 18, 3); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#555'; ctx.stroke();
+  ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(txt, (x1 + x2) / 2 - w / 2 + 6, top + 19);
+}
+
+function drawBlockBody(b) {
+  const s = sideOf(b.V), x = b.x, y = b.y, d = Math.max(5, s * 0.1);
+  ctx.fillStyle = shade(b.color, 0.25);    // top face
+  ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + d, y - s - d); ctx.lineTo(x + s + d, y - s - d); ctx.lineTo(x + s, y - s); ctx.fill();
+  ctx.fillStyle = shade(b.color, -0.3);    // right face
+  ctx.beginPath(); ctx.moveTo(x + s, y - s); ctx.lineTo(x + s + d, y - s - d); ctx.lineTo(x + s + d, y - d); ctx.lineTo(x + s, y); ctx.fill();
+  ctx.fillStyle = b.color; ctx.fillRect(x, y - s, s, s);
+  if (b.held) { ctx.strokeStyle = '#ff7a59'; ctx.lineWidth = 3; ctx.strokeRect(x - 1, y - s - 1, s + 2, s + 2); }
+  else if (S.screen === 'mystery' && b.id === S.mystery.sel) {   // the block being measured
+    ctx.strokeStyle = '#ff7a59'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+    ctx.strokeRect(x - 4, y - s - d - 4, s + d + 8, s + d + 8); ctx.setLineDash([]);
+  }
+}
+
+function drawBlockLabels(b) {
+  const s = sideOf(b.V);
+  const small = s < 60;
+  if (small) tag(b.label, b.x, b.y - s - Math.max(5, s * 0.1) - 24, { bold: true, size: 14, pad: 4 });
+  else tag(b.label, b.x + 4, b.y - s + 4, { bold: true, size: 14, pad: 4 });
+  if (S.screen === 'mystery') return;
+  const lines = [];
+  if (S.show.mass) lines.push(fmt(b.m) + ' g');
+  if (S.show.vol) lines.push(fmt(b.V) + ' mL');
+  if (S.show.den) lines.push(fmtFixed(b.m / b.V, 2) + ' g/mL');
+  const sz = small ? 13 : 15, step = sz + 8;
+  let yy = b.y - 3 - lines.length * step;
+  for (const t of lines) { tag(t, b.x + 2, yy, { size: sz, pad: 4 }); yy += step; }
+}
+
+function drawWater(wt, level) {
+  ctx.fillStyle = 'rgba(18, 140, 150, 0.36)'; ctx.fillRect(PL, wt, PR - PL, PB - wt);   // light tint so block colours stay recognisable underwater
+  ctx.fillStyle = 'rgba(140, 220, 220, 0.85)'; ctx.fillRect(PL, wt, PR - PL, 5);
+  // level readout with red pointer, like a measuring cup line
+  ctx.fillStyle = '#e01b1b'; ctx.beginPath(); ctx.moveTo(PL - 18, wt - 9); ctx.lineTo(PL, wt); ctx.lineTo(PL - 18, wt + 9); ctx.fill();
+}
+// Water-level readout, drawn last so blocks never hide it.
+function drawLevelReadout(wt, level) {
+  ctx.font = `700 19px ${FONT}`;
+  const txt = t('water') + ': ' + fmt(Math.round(level), 0) + ' mL';
+  const w = ctx.measureText(txt).width + 16, h = 30, x = PL + 8, y = GY + 6;
+  ctx.strokeStyle = '#e01b1b'; ctx.setLineDash([4, 4]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x + 12, y + h); ctx.lineTo(x + 12, wt); ctx.stroke(); ctx.setLineDash([]);
+  rr(x, y, w, h, 5); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#e01b1b'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 8, y + h / 2 + 1);
+}
+
+function draw() {
+  stepPhysics();
+  const { wt, level } = water();
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  if (S.screen === 'mystery') drawScale();
+  const inPool = b => { const cx = b.x + sideOf(b.V) / 2; return cx > PL && cx < PR && b.y > GY - 1; };
+  const order = [...S.blocks].sort((a, b) => (a.held - b.held));
+  drawWater(wt, level);                                  // water behind the blocks
+  order.filter(inPool).forEach(drawBlockBody);
+  ctx.fillStyle = 'rgba(120, 200, 210, 0.14)';           // faint "under water" tint that keeps colours true
+  ctx.fillRect(PL, wt, PR - PL, PB - wt);
+  ctx.fillStyle = 'rgba(140, 220, 220, 0.85)'; ctx.fillRect(PL, wt, PR - PL, 4);   // water surface line in front
+  order.filter(b => !inPool(b)).forEach(drawBlockBody);
+  order.forEach(drawBlockLabels);
+  drawLevelReadout(wt, level);
+}
+
+let raf = 0;
+function loop() { draw(); raf = requestAnimationFrame(loop); }
+
+// Fit the 1000x500 scene to the page width (never smaller than 68% so text stays readable).
+function fit() {
+  const outer = $('stageOuter'), wrap = $('sim');
+  const s = Math.max(0.68, wrap.clientWidth / W);
+  viewScale = s;
+  outer.style.width = W * s + 'px'; outer.style.height = H * s + 'px';
+  $('stageInner').style.transform = `scale(${s})`;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(W * s * dpr); canvas.height = Math.round(H * s * dpr);
+  ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
+}
+window.addEventListener('resize', () => { if (!$('sim').hidden) fit(); });
+
+// ---------- Dragging ----------
+let drag = null;
+function toScene(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+canvas.addEventListener('pointerdown', e => {
+  const p = toScene(e);
+  for (let i = S.blocks.length - 1; i >= 0; i--) {
+    const b = S.blocks[i], s = sideOf(b.V);
+    if (p.x >= b.x && p.x <= b.x + s + 6 && p.y >= b.y - s - 6 && p.y <= b.y) {
+      drag = { b, dx: p.x - b.x, dy: p.y - b.y };
+      b.held = true; b.loc = 'held'; b.settled = false;
+      S.blocks.splice(i, 1); S.blocks.push(b);       // bring to front
+      canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging');
+      e.preventDefault(); return;
+    }
+  }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const p = toScene(e), b = drag.b, s = sideOf(b.V);
+  b.x = clamp(p.x - drag.dx, 0, W - s - 10);
+  b.y = p.y - drag.dy;
+  const cx = b.x + s / 2;
+  if (cx > PL && cx < PR) { b.x = clamp(b.x, PL + 3, PR - 3 - s); b.y = Math.min(b.y, PB); }
+  else b.y = Math.min(b.y, GY);
+  b.y = Math.max(b.y, s + 12);
+});
+function endDrag() {
+  if (!drag) return;
+  const b = drag.b; b.held = false; placeBlock(b); drag = null; canvas.classList.remove('dragging');
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', endDrag);
+
+// =====================================================================
+//  SLIDER WIDGET (label, value box, ◀ slider ▶)
+// =====================================================================
+function slider(host, { id, labelKey, min, max, step, value, show, onInput }) {
+  const row = document.createElement('div');
+  const label = t(labelKey);
+  row.className = 'slider-row';
+  row.innerHTML = `<b>${label}</b><span class="val" id="${id}-val"></span>
+    <div class="slider-ctl"><button class="nudge" aria-label="${t('decrease', { x: label })}">◀</button>
+    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}">
+    <button class="nudge" aria-label="${t('increase', { x: label })}">▶</button></div>`;
+  host.appendChild(row);
+  const input = row.querySelector('input'), out = row.querySelector('.val');
+  const [dec, inc] = row.querySelectorAll('.nudge');
+  const update = () => { out.textContent = show(+input.value); onInput(+input.value); };
+  input.addEventListener('input', update);
+  const nudge = dir => { const st = input.step === 'any' ? (input.max - input.min) / 100 : +input.step; input.value = clamp(+input.value + dir * st, +input.min, +input.max); update(); };
+  dec.onclick = () => nudge(-1); inc.onclick = () => nudge(1);
+  out.textContent = show(value);
+  return { input, out, set(v, { min: mn, max: mx } = {}) { if (mn !== undefined) input.min = mn; if (mx !== undefined) input.max = mx; input.value = v; out.textContent = show(v); } };
+}
+
+// =====================================================================
+//  INTRO
+// =====================================================================
+const INTRO_MATS = ['styrofoam', 'wood', 'ice', 'brick', 'aluminum', 'custom'];
+let introMass, introVol;
+function buildIntro() {
+  $('matRadios').innerHTML = INTRO_MATS.map(k => `<label><input type="radio" name="mat" id="mat-${k}" value="${k}" ${k === S.intro.mat ? 'checked' : ''}> <span data-i="${k === 'custom' ? 'custom' : 'mat_' + k}"></span></label>`).join('');
+  $('matRadios').addEventListener('change', e => { S.intro.mat = e.target.value; introSync('mat'); });
+  buildIntroSliders();
+}
+// Sliders are rebuilt when the language changes so their labels update.
+function buildIntroSliders() {
+  const host = $('introSliders');
+  host.innerHTML = '';
+  introMass = slider(host, { id: 'iMass', labelKey: 'mass', min: 5, max: 3000, step: 'any', value: S.intro.m, show: v => fmt(v) + ' g', onInput: v => { S.intro.m = v; introSync('m'); } });
+  introVol = slider(host, { id: 'iVol', labelKey: 'volume', min: 100, max: 1000, step: 10, value: S.intro.V, show: v => fmt(v, 0) + ' mL', onInput: v => { S.intro.V = v; introSync('V'); } });
+}
+// Keep mass, volume and material consistent. A real material has a fixed density,
+// so changing its mass changes its volume (and the other way around).
+function introSync(changed) {
+  const I = S.intro, mat = MATS[I.mat];
+  if (mat) {
+    const lo = mat.d * 100, hi = mat.d * 1000;
+    if (changed === 'm') I.V = clamp(I.m / mat.d, 100, 1000);
+    else I.m = mat.d * I.V;
+    introMass.set(I.m, { min: lo, max: hi });
+  } else introMass.set(I.m, { min: 5, max: 3000 });
+  introVol.set(I.V);
+  const b = S.blocks[0];
+  if (b && S.screen === 'intro') { b.m = I.m; b.V = I.V; b.color = colorForIntro(); refit(['A']); }
+  renderIntroEq();
+}
+function renderIntroEq() {
+  const I = S.intro, d = I.m / I.V;
+  $('introEq').innerHTML = `<b>${t('density')} = ${t('massL')} ÷ ${t('volumeL')}</b><br>= ${fmt(I.m)} g ÷ ${fmt(I.V, 0)} mL<br>= <b>${fmtFixed(d, 2)} g/mL</b> ${d < RHO_WATER ? t('floats') : d > RHO_WATER ? t('sinks') : t('sameAsWater')}`;
+}
+const INTRO_COLORS = { styrofoam: '#e8e8e2', wood: '#a8743e', ice: '#9fd4ee', brick: '#b0452e', aluminum: '#a9b3bc', custom: '#2f66c9' };
+const colorForIntro = () => INTRO_COLORS[S.intro.mat];
+function startIntro() {
+  S.blocks = [makeBlock('A', 'A', colorForIntro(), S.intro.m, S.intro.V)];
+  layoutHomes(S.blocks, ['A']);
+  introSync('mat');
+}
+
+// =====================================================================
+//  COMPARE
+// =====================================================================
+// The same four blocks on every Compare screen: A red, B yellow, C green, D blue.
+// In Same Volume and Same Mass each colour is also the SAME material (same density),
+// so students can compare one block across both screens.
+const CMP_COLORS = { A: '#e2342d', B: '#f7d117', C: '#2e9e44', D: '#1f5fd6' };   // clear red, yellow, green, blue
+const CMP_DENS = { A: 1.6, B: 0.4, C: 1.2, D: 0.8 };                              // g/mL: red and green sink, yellow and blue float
+const CMP = {
+  volume:  { labelKey: 'volume', unit: 'mL', min: 100, max: 1000, step: 10, dens: CMP_DENS, colors: CMP_COLORS },
+  mass:    { labelKey: 'mass', unit: 'g', min: 50, max: 400, step: 10, dens: CMP_DENS, colors: CMP_COLORS },   // max 400 g keeps the yellow block (0.4 g/mL) at 1000 mL or less
+  density: { labelKey: 'density', unit: 'g/mL', min: 0.1, max: 2.0, step: 0.05, vols: { A: 400, B: 600, C: 200, D: 100 }, colors: CMP_COLORS },
+};
+let cmpSlider;
+function cmpMass(id) {
+  const c = S.compare, cfg = CMP[c.mode], v = c.val[c.mode];
+  if (c.mode === 'mass') return { m: v, V: v / cfg.dens[id] };
+  if (c.mode === 'volume') return { m: v * cfg.dens[id], V: v };
+  return { m: v * cfg.vols[id], V: cfg.vols[id] };
+}
+function buildCompareSlider() {
+  const c = S.compare, cfg = CMP[c.mode], host = $('compareSlider');
+  host.innerHTML = '';
+  cmpSlider = slider(host, { id: 'cSlider', labelKey: cfg.labelKey, min: cfg.min, max: cfg.max, step: cfg.step, value: c.val[c.mode],
+    show: v => c.mode === 'density' ? fmtFixed(v, 2) + ' g/mL' : fmt(v, 0) + ' ' + cfg.unit,
+    onInput: v => { c.val[c.mode] = v; updateCompareBlocks(); } });
+  $('compareQ').textContent = t('q_' + c.mode);
+}
+function updateCompareBlocks() {
+  for (const b of S.blocks) { const { m, V } = cmpMass(b.id); b.m = m; b.V = V; }
+  refit(['A', 'B']);
+}
+function startCompare() {
+  const cfg = CMP[S.compare.mode];
+  S.blocks = ['A', 'B', 'C', 'D'].map(id => { const { m, V } = cmpMass(id); return makeBlock(id, id, cfg.colors[id], m, V); });
+  layoutHomes(S.blocks, ['A', 'B']);
+  buildCompareSlider();
+}
+document.querySelectorAll('input[name=cmode]').forEach(r => r.addEventListener('change', e => { S.compare.mode = e.target.value; startCompare(); }));
+
+// =====================================================================
+//  MYSTERY
+// =====================================================================
+const MYSTERY_SETS = {
+  '1': [['gold', 50], ['steel', 100], ['wood', 300], ['aluminum', 200], ['ice', 400]],
+  '2': [['copper', 80], ['styrofoam', 500], ['brick', 250], ['titanium', 120], ['silver', 60]],
+  '3': [['lead', 90], ['diamond', 40], ['ice', 150], ['steel', 70], ['wood', 450]],
+};
+const MYS_COLORS = ['#3d5a80', '#e07a5f', '#81b29a', '#b5833c', '#1f78d1'];
+function randomSet() {
+  const keys = shuffle(Object.keys(MATS)).slice(0, 5);
+  return keys.map(k => [k, randInt(4, 40) * 10]);   // 40-400 mL, whole tens
+}
+function startMystery() {
+  const M = S.mystery;
+  const def = M.set === 'r' ? randomSet() : MYSTERY_SETS[M.set];
+  const prefix = M.set === 'r' ? 'R' : M.set;
+  const colors = M.set === 'r' ? shuffle([...MYS_COLORS]) : MYS_COLORS;
+  S.blocks = def.map(([mat, V], i) => {
+    const id = prefix + 'ABCDE'[i];
+    return makeBlock(id, id, colors[i], +(MATS[mat].d * V).toFixed(1), V, { mat });
+  });
+  layoutHomes(S.blocks, S.blocks.slice(0, 2).map(b => b.id));
+  M.work = {};
+  M.sel = S.blocks[0].id;
+  renderMeasure();
+}
+
+// ---------- Measure a block: students type mass, volume and density, then Check ----------
+const MEAS_IN = { m: 'inMass', v: 'inVol', d: 'inDen' };
+const work = id => (S.mystery.work[id] ||= { m: '', v: '', d: '', tries: 0, done: false, marks: {} });
+const num = str => parseFloat(String(str).replace(',', '.'));   // 2,5 counts as 2.5
+
+function renderMeasure() {
+  const M = S.mystery, w = work(M.sel);
+  $('pickRow').setAttribute('aria-label', t('blocks'));
+  $('pickRow').innerHTML = S.blocks.map(b => `<button data-pick="${b.id}" aria-pressed="${b.id === M.sel}" class="${work(b.id).done ? 'done' : ''}">${b.label}${work(b.id).done ? ' ✓' : ''}</button>`).join('');
+  for (const [k, id] of Object.entries(MEAS_IN)) {
+    const el = $(id); el.value = w[k]; el.disabled = w.done;
+    el.className = w.marks[k] || '';
+  }
+  $('measCheck').disabled = w.done;
+  const n = S.blocks.filter(b => work(b.id).done).length;
+  $('measStatus').textContent = t('doneCount', { n, t: S.blocks.length });
+}
+$('pickRow').addEventListener('click', e => { const id = e.target.closest('button')?.dataset.pick; if (id) { S.mystery.sel = id; renderMeasure(); } });
+for (const [k, id] of Object.entries(MEAS_IN)) $(id).addEventListener('input', e => { const w = work(S.mystery.sel); w[k] = e.target.value; delete w.marks[k]; e.target.className = ''; });
+['inMass', 'inVol', 'inDen'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') checkMeasure(); }));
+$('measCheck').onclick = checkMeasure;
+
+function checkMeasure() {
+  const b = S.blocks.find(x => x.id === S.mystery.sel), w = work(b.id);
+  const m = num(w.m), v = num(w.v), d = num(w.d);
+  if ([m, v, d].some(isNaN)) { $('measStatus').textContent = t('needAll'); return; }
+  const trueD = b.m / b.V;
+  // Allow small rounding differences (for example 19.3 for 19.32 g/mL).
+  const ok = {
+    m: Math.abs(m - b.m) <= Math.max(0.15, b.m * 0.005),
+    v: Math.abs(v - b.V) <= Math.max(1, b.V * 0.01),
+    d: Math.abs(d - trueD) <= Math.max(0.026, trueD * 0.015),
+  };
+  w.tries++;
+  w.marks = { m: ok.m ? 'ok' : 'bad', v: ok.v ? 'ok' : 'bad', d: ok.d ? 'ok' : 'bad' };
+  const vars = { b: b.label, m: fmtFixed(b.m, 1), v: fmt(b.V, 0), d: fmtFixed(trueD, 2), mat: matName(b.mat) };
+  if (ok.m && ok.v && ok.d) {
+    w.done = true; renderMeasure();
+    confetti();
+    showPopup(true, t('mOkT', vars), `<div class="math">${t('mOkB', vars)}</div>`, t('mOkT', vars) + ' ' + t('mOkB', vars));
+    return;
+  }
+  renderMeasure();
+  // Red popup: say which values are right, explain how to get each wrong one, then let them redo it.
+  const items = [];
+  items.push(ok.m ? `<li class="ok">${t('mGood', { q: t('mass') })}</li>` : `<li>${t('massBad', vars)}</li>`);
+  items.push(ok.v ? `<li class="ok">${t('mGood', { q: t('volume') })}</li>` : `<li>${t('volBad', vars)}</li>`);
+  if (ok.d) items.push(`<li class="ok">${t('mGood', { q: t('density') })}</li>`);
+  else if (v > 0) items.push(`<li>${t('denBadYours', { m: fmt(m, 2), v: fmt(v, 2), d: fmtFixed(m / v, 2) })}</li>`);
+  else items.push(`<li>${t('denBad')}</li>`);
+  let html = `<ul class="checks">${items.join('')}</ul>`;
+  if (w.tries >= 2) html += `<p>${t('reveal', vars)}</p>`;   // after 2 misses, show the right numbers so nobody gets stuck
+  const tmp = document.createElement('div'); tmp.innerHTML = html;
+  showPopup(false, t('mBadT'), html, t('mBadT') + '. ' + tmp.textContent, {
+    closeLabel: t('tryAgain'),
+    onClose: () => { const first = ['m', 'v', 'd'].find(k => !ok[k]); $(MEAS_IN[first]).focus(); },
+  });
+}
+document.querySelectorAll('input[name=mset]').forEach(r => r.addEventListener('change', e => { S.mystery.set = e.target.value; startMystery(); }));
+function buildDensityTable() {
+  const keys = Object.keys(MATS), half = Math.ceil(keys.length / 2); let h = '';
+  for (let i = 0; i < half; i++) {
+    const a = keys[i], b = keys[i + half];
+    h += `<tr><td>${matName(a)}</td><td class="n">${fmtFixed(MATS[a].d, 2)}</td><td>${b ? matName(b) : ''}</td><td class="n">${b ? fmtFixed(MATS[b].d, 2) : ''}</td></tr>`;
+  }
+  $('dtableBody').innerHTML = `<tr><td colspan="4" style="font-weight:700">${t('tableHead')}</td></tr>` + h;
+}
+$('tableBtn').onclick = () => { const t = $('dtable'); t.hidden = !t.hidden; $('tablePlus').textContent = t.hidden ? '+' : '−'; $('tableBtn').setAttribute('aria-expanded', String(!t.hidden)); };
+
+// Blocks on Intro and Compare always show their mass (the "Show on blocks" panel was removed).
+
+// =====================================================================
+//  TEST (5th screen): 4 clues, 2 are distractors (width in cm, temperature in °F)
+// =====================================================================
+const TEST_DENS = [0.4, 0.5, 0.8, 0.9, 1.2, 1.5, 2.0, 2.5, 2.7, 3.5, 4.5, 7.8, 8.9, 10.5, 11.3, 19.3];
+// mL and cm³ are the same amount, and g/mL and g/cm³ are the same density, so each pair is ONE choice.
+// cm and °F are the 2 dummy units.
+const UNIT_CHOICES = ['g', 'cm', 'mL', '°F', 'g/mL'];
+const UNIT_LABEL = { 'mL': 'mL = cm³', 'g/mL': 'g/mL = g/cm³' };
+const unitLabel = u => UNIT_LABEL[u] || u;
+const RIGHT_UNITS = { mass: ['g'], volume: ['mL', 'cm³'], density: ['g/mL', 'g/cm³'] };
+const qName = q => t({ mass: 'massL', volume: 'volumeL', density: 'densityL', width: 'widthL', temp: 'tempL' }[q]);
+const qThe = q => t({ mass: 'theMass', volume: 'theVolume', density: 'theDensity' }[q]);
+const T = { p: null, done: false, correct: 0, tried: 0, streak: 0 };
+
+function newProblem() {
+  const D = pick(TEST_DENS), V = randInt(2, 60), m = Math.round(D * V * 10) / 10;   // every answer has at most 1 decimal
+  const unknown = pick(['mass', 'volume', 'density']);
+  const vU = Math.random() < 0.5 ? 'mL' : 'cm³', dU = Math.random() < 0.5 ? 'g/mL' : 'g/cm³';
+  const clues = [];
+  if (unknown !== 'mass') clues.push({ q: 'mass', val: m, unit: 'g' });
+  if (unknown !== 'volume') clues.push({ q: 'volume', val: V, unit: vU });
+  if (unknown !== 'density') clues.push({ q: 'density', val: D, unit: dU });
+  clues.push({ q: 'width', val: randInt(2, 40), unit: 'cm' });
+  clues.push({ q: 'temp', val: randInt(34, 98), unit: '°F' });
+  T.p = { D, V, m, unknown, vU, dU, clues: shuffle(clues), answer: { mass: m, volume: V, density: D }[unknown] };
+  T.done = false;
+  $('clues').innerHTML = T.p.clues.map(c => `<li><span>${fmt(c.val)}</span><span class="u">${c.unit}</span></li>`).join('') + `<li class="missing">? = ________</li>`;
+  $('ansNum').value = ''; $('ansUnit').value = ''; $('ansNum').disabled = $('ansUnit').disabled = $('checkBtn').disabled = false;
+  $('testMsg').textContent = '';
+}
+$('ansUnit').innerHTML = '<option value="" data-i="choose"></option>' + UNIT_CHOICES.map(u => `<option value="${u}">${unitLabel(u)}</option>`).join('');
+
+function workedSolution(p) {
+  const vU = p.vU, dU = p.dU;
+  const sort = p.clues.map(c => `${fmt(c.val)} ${c.unit} → ${qName(c.q)}${c.q === 'width' || c.q === 'temp' ? ' ' + t('notNeeded') : ' ✓'}`).join('<br>');
+  let eq;
+  if (p.unknown === 'density') { eq = `D = m ÷ V = ${fmt(p.m)} g ÷ ${fmt(p.V)} ${vU} = <b>${fmt(p.D)} g/${vU}</b>`; }
+  if (p.unknown === 'volume')  { eq = `V = m ÷ D = ${fmt(p.m)} g ÷ ${fmt(p.D)} ${dU} = <b>${fmt(p.V)} ${dU.slice(2)}</b>`; }
+  if (p.unknown === 'mass')    { eq = `m = D × V = ${fmt(p.D)} ${dU} × ${fmt(p.V)} ${vU} = <b>${fmt(p.m)} g</b>`; }
+  if ((p.vU === 'mL') !== (p.dU === 'g/mL') && p.unknown !== 'volume' && p.unknown !== 'density') eq += '<br><span style="font-weight:400">' + t('mlcmCancel') + '</span>';
+  // Always remind students the two ways of writing the answer mean the same thing.
+  if (p.unknown === 'density') eq += '<br><span style="font-weight:400">' + t('sameThing', { a: fmt(p.D) }) + '</span>';
+  if (p.unknown === 'volume') eq += '<br><span style="font-weight:400">' + t('sameVol', { a: fmt(p.V) }) + '</span>';
+  const have = p.clues.filter(c => RIGHT_UNITS[c.q]).map(c => qName(c.q)).join(' ' + t('and') + ' ');
+  return { sort, eq, have };
+}
+function rightUnitText(p) { const or = ' ' + t('or') + ' '; return p.unknown === 'mass' ? 'g' : p.unknown === 'volume' ? 'mL' + or + 'cm³' : 'g/mL' + or + 'g/cm³'; }
+
+function checkTest() {
+  if (T.done) return;
+  // A comma counts as a decimal point (2,7 = 2.7), the way many Spanish and Vietnamese speakers write it.
+  const raw = $('ansNum').value.replace(',', '.').trim(), unit = $('ansUnit').value;
+  const num = parseFloat(raw);
+  if (raw === '' || isNaN(num) || !unit) { $('testMsg').textContent = t('needBoth'); return; }
+  $('testMsg').textContent = '';
+  const p = T.p, tol = Math.max(0.051, Math.abs(p.answer) * 0.01);   // allow small rounding differences
+  const numOk = Math.abs(num - p.answer) <= tol, unitOk = RIGHT_UNITS[p.unknown].includes(unit);
+  T.done = true; T.tried++;
+  $('ansNum').disabled = $('ansUnit').disabled = $('checkBtn').disabled = true;
+  const w = workedSolution(p);
+  const tri = `<div class="tri-wrap"><div class="tri"><span class="m">m</span><span class="bar"></span><span class="d">D</span><span class="x">×</span><span class="v">V</span></div><div class="math" style="flex:1;min-width:0">${w.eq}</div></div>`;
+  if (numOk && unitOk) {
+    T.correct++; T.streak++;
+    confetti();
+    showPopup(true, t('tOkT'), `<p>${t('tOkB', { q: qThe(p.unknown), have: w.have })}</p>${tri}<p>${t('tExtra')}</p>`,
+      t('tOkS', { q: qThe(p.unknown), eq: speakEq(p) }));
+  } else {
+    T.streak = 0;
+    const what = t(!unitOk && numOk ? 'numOkUnitBad' : unitOk && !numOk ? 'unitOkNumBad' : 'bothBad');
+    showPopup(false, t('tBadT'), `<p class="yours">${t('tYour', { a: fmt(num, 3) + ' ' + unitLabel(unit) })} ${what}</p>
+      <p><b>${t('step1T')}</b></p><div class="math">${w.sort}</div>
+      <p>${t('step2T', { have: w.have, q: qThe(p.unknown), u: rightUnitText(p) })}</p>
+      <p><b>${t('step3T')}</b></p>${tri}`,
+      t('tBadS', { a: fmt(num, 3) + ' ' + sayUnit(unit), what, have: w.have, q: qThe(p.unknown), eq: speakEq(p) }));
+  }
+  updateScore();
+}
+// The worked math, spelled out for read-aloud in the current language.
+function speakEq(p) {
+  const v = { m: fmt(p.m), v: fmt(p.V), d: fmt(p.D) };
+  if (p.unknown === 'density') return t('sayDensity', { ...v, vu: sayUnit(p.vU), du: sayUnit('g/' + p.vU) });
+  if (p.unknown === 'volume') return t('sayVolume', { ...v, du: sayUnit(p.dU), vu: sayUnit(p.dU.slice(2)) });
+  return t('sayMass', { ...v, du: sayUnit(p.dU), vu: sayUnit(p.vU) });
+}
+function updateScore() { $('scCorrect').textContent = T.correct; $('scTried').textContent = T.tried; $('scStreak').textContent = T.streak; }
+$('checkBtn').onclick = checkTest;
+$('ansNum').addEventListener('keydown', e => { if (e.key === 'Enter') checkTest(); });
+$('nextBtn').onclick = newProblem;
+const setHintLabel = () => { $('hintBtn').textContent = t($('hintBox').hidden ? 'showHint' : 'hideHint'); };
+$('hintBtn').onclick = () => { const h = $('hintBox'); h.hidden = !h.hidden; setHintLabel(); $('hintBtn').setAttribute('aria-expanded', String(!h.hidden)); };
+$('speakBtn').onclick = () => speak(t('clueSpeech', { c: T.p.clues.map(c => `${fmt(c.val)} ${sayUnit(c.unit)}.`).join(' ') }));
+
+// ---------- Keypad calculator (number pad 1–9, 0, decimal point, + − × ÷) ----------
+// Students tap the keys or type. Only digits, a decimal point and + − × ÷ are allowed.
+function evalCalc(text) {
+  const src = text.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/,/g, '.');
+  if (!/^[0-9+\-*/.\s()]+$/.test(src)) return { err: t('calcOps') };
+  try {
+    const v = Function('"use strict";return (' + src + ')')();
+    if (!isFinite(v)) return { err: t('calcDiv0') };
+    return { v: Math.round(v * 10000) / 10000 };
+  } catch (e) { return { err: t('calcFinish') }; }
+}
+function buildCalc(host, { onUse } = {}) {
+  host.innerHTML = `<div class="screen"><div class="expr" aria-live="polite"></div>
+      <input aria-label="Calculator display" inputmode="none" autocomplete="off" placeholder="0"></div>
+    <div class="keys">
+      <button>7</button><button>8</button><button>9</button><button class="op" aria-label="divide">÷</button>
+      <button>4</button><button>5</button><button>6</button><button class="op" aria-label="times">×</button>
+      <button>1</button><button>2</button><button>3</button><button class="op" aria-label="minus">−</button>
+      <button>0</button><button aria-label="decimal point">.</button><button aria-label="delete" data-k="del">⌫</button><button class="op" aria-label="plus">+</button>
+      <button class="clr" data-k="clr" data-i="clear"></button><button class="eqk" data-k="eq" aria-label="equals">=</button>
+    </div>${onUse ? '<button class="big-btn alt use" data-k="use" data-i="useResult"></button>' : ''}`;
+  const disp = host.querySelector('input'), expr = host.querySelector('.expr');
+  let justSolved = false;
+  const press = k => {
+    if (k === 'clr') { disp.value = ''; expr.textContent = ''; justSolved = false; return; }
+    if (k === 'del') { disp.value = disp.value.slice(0, -1); justSolved = false; return; }
+    if (k === 'eq') {
+      if (!disp.value.trim()) return;
+      const r = evalCalc(disp.value);
+      if (r.err) { expr.textContent = r.err; return; }
+      expr.textContent = disp.value + ' =';
+      disp.value = String(r.v); justSolved = true; return;
+    }
+    if (k === 'use') { if (disp.value && !isNaN(+disp.value)) onUse(disp.value); return; }
+    const isOp = '÷×−+'.includes(k);
+    if (justSolved && !isOp) disp.value = '';     // a new number after "=" starts a new problem
+    justSolved = false;
+    disp.value += isOp ? ' ' + k + ' ' : k;
+  };
+  host.querySelector('.keys').addEventListener('click', e => { const b = e.target.closest('button'); if (b) press(b.dataset.k || b.textContent.trim()); });
+  host.addEventListener('click', e => { if (e.target.dataset.k === 'use') press('use'); });
+  disp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); press('eq'); } });
+}
+buildCalc($('calcSim'));
+buildCalc($('calcTest'), { onUse: v => { if (!T.done) { $('ansNum').value = v; $('ansUnit').focus(); } } });
+
+// =====================================================================
+//  POPUP, READ-ALOUD, CONFETTI
+// =====================================================================
+let popSpeech = '', lastFocus = null;
+function stopConfetti() { bits = []; cfx.clearRect(0, 0, cf.width, cf.height); }
+let popOnClose = null;
+function showPopup(ok, title, html, speech, { noAnswer = false, closeLabel = null, onClose = null } = {}) {
+  popOnClose = onClose;
+  if (!ok) stopConfetti();
+  const pop = $('pop');
+  pop.className = 'pop ' + (ok ? 'ok' : 'bad');
+  $('popBadge').textContent = ok ? '✓' : (noAnswer ? '!' : '✗');
+  $('popTitle').textContent = title;
+  $('popBody').innerHTML = html;
+  popSpeech = speech;
+  $('popClose').textContent = closeLabel || ((S.screen === 'test' && !noAnswer) ? t('nextProblem') : t('ok'));
+  lastFocus = document.activeElement;
+  $('overlay').hidden = false;
+  $('popClose').focus();
+}
+function closePopup() {
+  $('overlay').hidden = true;
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (popOnClose) { const f = popOnClose; popOnClose = null; f(); }
+  else if (S.screen === 'test' && T.done) { newProblem(); $('ansNum').focus(); }
+  else if (lastFocus) lastFocus.focus();
+}
+$('popClose').onclick = closePopup;
+$('popSpeak').onclick = () => speak(popSpeech);
+$('overlay').addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+// Read aloud with a voice for the current language (slightly slow for EL students).
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const code = LANG[lang].speech, voices = speechSynthesis.getVoices();
+  const voice = voices.find(v => v.lang === code) || voices.find(v => v.lang && v.lang.slice(0, 2) === code.slice(0, 2));
+  if (!voice && voices.length) { toast(t('noVoice')); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = code; u.rate = 0.9; if (voice) u.voice = voice;
+  speechSynthesis.speak(u);
+}
+if (window.speechSynthesis) speechSynthesis.getVoices();   // warm up the voice list
+let toastTimer = 0;
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4000); }
+
+const cf = $('confetti'), cfx = cf.getContext('2d');
+let bits = [], cfRaf = 0;
+function confetti() {
+  const dpr = window.devicePixelRatio || 1;
+  cf.width = innerWidth * dpr; cf.height = innerHeight * dpr; cfx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const colors = ['#ff9b71', '#0f7c86', '#f6c177', '#81b29a', '#e07a5f', '#3d5a80'];
+  const n = reduceMotion ? 40 : 180;
+  for (let i = 0; i < n; i++) bits.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.5, vx: (Math.random() - 0.5) * 3,
+    vy: 2 + Math.random() * 3, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, c: pick(colors) });
+  if (!cfRaf) cfRaf = requestAnimationFrame(confettiStep);
+}
+function confettiStep() {
+  cfx.clearRect(0, 0, innerWidth, innerHeight);
+  bits = bits.filter(p => p.y < innerHeight + 30);
+  for (const p of bits) {
+    p.vy += 0.05; p.x += p.vx + Math.sin(p.y / 30); p.y += p.vy; p.r += reduceMotion ? 0 : p.vr;
+    cfx.save(); cfx.translate(p.x, p.y); cfx.rotate(p.r); cfx.fillStyle = p.c; cfx.fillRect(-p.w / 2, -p.h / 2, p.w, Math.abs(Math.cos(p.r)) * p.h + 2); cfx.restore();
+  }
+  cfRaf = bits.length ? requestAnimationFrame(confettiStep) : 0;
+}
+
+// =====================================================================
+//  SCREEN SWITCHING
+// =====================================================================
+const STARTERS = { intro: startIntro, compare: startCompare, mystery: startMystery };
+function go(screen) {
+  S.screen = screen;
+  stopConfetti();
+  store('densityLab.screen', screen);
+  $('home').hidden = screen !== 'home';
+  $('test').hidden = screen !== 'test';
+  const sim = ['intro', 'compare', 'mystery'].includes(screen);
+  $('sim').hidden = !sim;
+  $('tools').hidden = !sim;
+  document.querySelectorAll('[data-for]').forEach(el => { el.hidden = !el.dataset.for.split(' ').includes(screen); });
+  if (screen !== 'mystery') $('dtable').hidden = true;
+  document.querySelectorAll('.tab').forEach(t => { if (t.dataset.go === screen) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+  cancelAnimationFrame(raf);
+  if (sim) { fit(); STARTERS[screen](); loop(); }
+  if (screen === 'test' && !T.p) newProblem();
+}
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+$('resetBtn').onclick = () => {
+  if (S.screen === 'intro') { S.intro = { mat: 'wood', m: 250, V: 500 }; $('mat-wood').checked = true; }
+  if (S.screen === 'mystery') { /* new blocks in the same set */ }
+  STARTERS[S.screen]();
+};
+
+// =====================================================================
+//  LANGUAGE SWITCHING
+// =====================================================================
+// Fill every [data-i] (text), [data-ih] (text with bold) and [data-ia] (screen-reader label) inside root.
+function translate(root = document) {
+  root.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
+  root.querySelectorAll('[data-ih]').forEach(el => { el.innerHTML = t(el.dataset.ih); });
+  root.querySelectorAll('[data-ia]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.ia)); el.title = t(el.dataset.ia); });
+  root.querySelectorAll('select[data-b]').forEach(el => el.setAttribute('aria-label', t('matFor', { b: el.dataset.b })));
+}
+function setLang(code) {
+  lang = code;
+  store('densityLab.lang', code);
+  document.documentElement.lang = code;
+  document.querySelectorAll('.langs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === code)));
+  translate();
+  buildIntroSliders(); introSync('V');   // same numbers, new labels
+  buildCompareSlider();
+  renderIntroEq();
+  buildDensityTable();
+  if (S.blocks.length && S.screen === 'mystery') renderMeasure();
+  setHintLabel();
+  $('testMsg').textContent = '';
+}
+document.querySelectorAll('.langs button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+
+buildIntro();
+setLang(lang);
+const saved = store('densityLab.screen');
+go(['intro', 'compare', 'mystery', 'test'].includes(saved) ? saved : 'home');
+</script>
