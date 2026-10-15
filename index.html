@@ -1,1595 +1,1268 @@
-<title>Density Lab</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Atkinson+Hyperlegible+Mono:wght@400;700&display=swap">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sample &amp; Estimate</title>
 <style>
-/* Layout: seaside lab bench (sunset sky, sea, sand, glass tank). A 1000x500 scene (canvas) scaled to fit, with floating control
-   panels on top, and a black screen-picker bar underneath. Single bright "outdoor lab" look by design. */
+/* Layout: scene (sticky) on the left, steps + worksheet on the right; stacks on phones. No external files. */
 :root {
-  --page: #f4efe6;      /* page behind the sim */
-  --panel: #ffffff;     /* control panels */
-  --ink: #14262f;       /* main text */
-  --muted: #4f6168;     /* secondary text */
-  --line: #93a9ad;      /* panel borders */
-  --accent: #0f7c86;    /* buttons, focus */
-  --nav: #0f2c3d;       /* bottom bar */
-  --nav-on: #ff9b71;    /* selected screen */
-  --ok: #1b7f3a;  --ok-bg: #e7f6ec;
-  --bad: #c22b2b; --bad-bg: #fdeceb;
-  --hint: #fff3c4;
-  --font: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #edf1ec;
+  --surface: #ffffff;
+  --ink: #14282a;
+  --muted: #566b68;
+  --line: #cdd9d3;
+  --chip: #e1e9e4;
+  --accent: #0e6f6a;
+  --accent-ink: #ffffff;
+  --frame: #f5b301;
+  --good: #1d7f47;
+  --good-bg: #d6f0df;
+  --bad: #b8352a;
+  --bad-bg: #fbe0dc;
+  --fcard-bg: #14282a;
+  --fcard-ink: #f2f7f4;
+  --fcard-mute: #9fb8b2;
+  --input-bg: #f7faf8;
+  --font: "Avenir Next", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  --radius: 12px;
 }
-[hidden] { display: none !important; }
-html, body { height: 100%; }
-body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.4; }
-* { box-sizing: border-box; }
-button, select, input { font: inherit; color: inherit; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1a1a; --surface: #142625; --ink: #e4efec; --muted: #8fb0aa; --line: #284240; --chip: #1c3331;
+    --accent: #3fc4b8; --accent-ink: #04201e; --good: #5bd894; --good-bg: #123a26; --bad: #ff8576; --bad-bg: #3f1b17;
+    --fcard-bg: #0a1212; --fcard-ink: #e8f3f0; --fcard-mute: #7fa29b; --input-bg: #0f1f1e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1a1a; --surface: #142625; --ink: #e4efec; --muted: #8fb0aa; --line: #284240; --chip: #1c3331;
+  --accent: #3fc4b8; --accent-ink: #04201e; --good: #5bd894; --good-bg: #123a26; --bad: #ff8576; --bad-bg: #3f1b17;
+  --fcard-bg: #0a1212; --fcard-ink: #e8f3f0; --fcard-mute: #7fa29b; --input-bg: #0f1f1e; color-scheme: dark;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 56px; display: grid; gap: 16px; }
 
-.app { max-width: 1280px; margin: 0 auto; padding-block: 12px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: stretch; justify-content: space-between; }
+h1 { margin: 0; font-size: clamp(1.75rem, 3.8vw, 2.5rem); letter-spacing: -0.02em; line-height: 1.1; }
+.tagline { margin: 8px 0 0; color: var(--muted); max-width: 40ch; }
+.title-block { flex: 1 1 260px; align-self: center; }
+.formula { flex: 0 1 460px; background: var(--fcard-bg); color: var(--fcard-ink); border-radius: var(--radius); padding: 14px 18px; }
+.formula .eq { font: 700 clamp(1.4rem, 3.2vw, 2rem)/1.2 var(--mono); letter-spacing: -0.01em; }
+.formula .vars { margin: 8px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; font-size: 0.88rem; color: var(--fcard-mute); }
+.formula .vars b { color: var(--fcard-ink); font-family: var(--mono); }
+.formula .round { margin: 10px 0 0; font-size: 0.9rem; color: var(--fcard-ink); border-top: 1px solid rgba(255,255,255,.18); padding-top: 8px; }
 
-/* ---------- Scene ---------- */
-.stage-scroll { overflow-x: auto; border-radius: 0; background: #f7a072; }
-.stage-outer { position: relative; }
-.stage-inner { position: absolute; left: 0; top: 0; width: 1000px; height: 500px; transform-origin: 0 0; }
-#scene { position: absolute; inset: 0; width: 1000px; height: 500px; touch-action: none; cursor: grab; }
-#scene.dragging { cursor: grabbing; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.ctrl { display: flex; flex-direction: column; gap: 4px; }
+.ctrl-label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--bg); }
+.seg button { border: 0; background: transparent; color: var(--ink); font: 600 0.95rem var(--font); padding: 9px 16px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--frame); outline-offset: 2px; }
+.btn { font: 700 0.98rem var(--font); border-radius: 999px; padding: 10px 20px; border: 2px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.controls .spacer { flex: 1; }
+.controls.tests { align-items: center; }
+.testnote { margin: 0; color: var(--muted); font-size: 0.92rem; align-self: end; padding-bottom: 8px; }
+.seg.test button[aria-pressed="true"] { background: var(--frame); color: #14282a; }
+.testbar { font-size: 0.98rem; border-left: 6px solid var(--frame); }
+.testbar[hidden] { display: none; }
+.pop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10, 20, 20, .5); }
+.popcard { width: 100%; max-width: 540px; max-height: 88vh; overflow: auto; border-radius: 16px; padding: 20px 22px 22px; color: #fff; box-shadow: 0 14px 44px rgba(0,0,0,.4); animation: popin .28s ease-out; }
+.pop.ok .popcard { background: #1d7f47; }
+.pop.bad .popcard { background: #b8352a; }
+.popicon { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; font: 700 1.6rem var(--font); margin-bottom: 6px; }
+.popcard h2 { margin: 0 0 6px; font-size: 1.5rem; }
+.popbody { font-size: 1rem; }
+.popbody ul { margin: 8px 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.popbody p { margin: 8px 0 0; }
+.popbody b { font-family: var(--mono); font-weight: 700; }
+.popbtn { background: #fff; color: #14282a; border-color: #fff; margin-top: 14px; }
+.pbig { font: 700 1.6rem var(--mono); }
+@keyframes popin { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .popcard { animation: none; } }
+.sumlist { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.sumlist li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px; border-radius: 10px; background: var(--chip); }
+.sumlist .ok { color: var(--good); font-weight: 700; } .sumlist .no { color: var(--bad); font-weight: 700; }
+@media (max-width: 640px) { .seg { flex-direction: column; border-radius: 14px; } .seg button + button { border-left: 0; border-top: 1px solid var(--line); } }
 
-.panel { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
-  padding: 8px 12px; font-size: 15px; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
-.panel h3 { margin: 0 0 4px; font-size: 17px; }
-.panel label { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 1px 0; }
-.panel input[type=radio], .panel input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
-.panel .note { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
-.slider-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; margin-bottom: 6px; }
-.slider-row .val { font-family: var(--mono); font-size: 14px; border: 1px solid #c7cdd3; border-radius: 4px; padding: 1px 8px; min-width: 84px; text-align: right; }
-.slider-ctl { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; }
-.slider-ctl input[type=range] { flex: 1; accent-color: var(--accent); }
-.nudge { width: 26px; height: 24px; border: 1px solid #333; border-radius: 4px; background: #fff; cursor: pointer; font-size: 11px; line-height: 1; }
-.eq { font-family: var(--font); font-variant-numeric: tabular-nums; font-size: 14px; background: #f3f6f8; border-radius: 6px; padding: 6px 8px; }
-.eq b { font-family: var(--font); }
+main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.scene-col { display: grid; gap: 10px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.story { font-size: 1rem; }
+.story p { margin: 0 0 6px; }
+.story p:last-child { margin: 0; color: var(--muted); font-size: 0.92rem; }
+svg.scene { display: block; width: 100%; height: auto; max-height: 66vh; margin-inline: auto; border-radius: 10px; }
+.legend { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
-.reset { position: absolute; left: 14px; top: 12px; width: 44px; height: 44px; border-radius: 50%;
-  border: 2px solid #fff; background: radial-gradient(circle at 35% 30%, #4cc3c9, #0f7c86); color: #fff;
-  font-size: 24px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.work-col { display: grid; gap: 14px; }
+h2 { margin: 0 0 6px; font-size: 1.15rem; letter-spacing: -0.01em; }
+.hint { margin: 0 0 10px; color: var(--muted); font-size: 0.92rem; }
+.panels { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+.panel { border: 2px solid var(--frame); border-radius: 10px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
+.pname { display: flex; justify-content: space-between; gap: 8px; padding: 5px 9px; background: var(--chip); font-size: 0.88rem; }
+.pname span { color: var(--muted); }
+svg.pv { display: block; width: 100%; height: auto; }
+svg.pv use.o { cursor: pointer; }
+.pcount { padding: 6px 10px 8px; border-top: 1px solid var(--line); font-size: 0.95rem; }
+.pcount b { font: 700 1.15rem var(--mono); }
+.pedge { margin: 0; padding: 4px 9px; font-size: 0.82rem; background: var(--chip); border-left: 4px solid #e0218a; }
+.seen { opacity: .25; }
+.cnt { display: flex; align-items: center; gap: 8px; padding: 6px 9px 8px; }
+.cnt span { font-size: 0.9rem; color: var(--muted); }
+.num { width: 100%; min-width: 0; font: 700 1.05rem var(--mono); padding: 7px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--input-bg); color: var(--ink); }
+.num.good { border-color: var(--good); background: var(--good-bg); }
+.num.bad { border-color: var(--bad); background: var(--bad-bg); }
+.fb { font-size: 0.86rem; margin: 3px 9px 7px; color: var(--muted); }
+.fb.good { color: var(--good); } .fb.bad { color: var(--bad); }
+.fb b { font-family: var(--mono); }
 
-/* Mystery */
-.table-btn { left: 50%; transform: translateX(-50%); top: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; display: flex; gap: 8px; align-items: center; }
-.plus { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 4px; background: var(--accent); color: #fff; font-size: 16px; line-height: 1; }
-.dtable { left: 50%; transform: translateX(-50%); top: 50px; width: 360px; z-index: 3; }
-.dtable table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.dtable td { padding: 2px 6px; border-bottom: 1px solid #e3e7ea; }
-.dtable td.n { font-family: var(--mono); text-align: right; }
-.small-btn { border: 2px solid var(--accent); background: #fff; color: var(--accent); font-weight: 700; border-radius: 5px; padding: 2px 10px; cursor: pointer; font-size: 14px; }
-.small-btn:hover { background: #e6f3f1; }
-/* Buttons on the scene, next to Reset */
-.sim-btns { position: absolute; left: 70px; top: 16px; display: flex; gap: 8px; }
-.chip-btn { font: 700 14px var(--font); padding: 7px 12px; border-radius: 999px; border: 2px solid var(--accent); background: #fff; color: var(--accent); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-.chip-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
-/* Teacher code dialog */
-.pop.pred { border-color: var(--accent); }
-.pop.pred h2 { color: var(--ink); font-size: 22px; }
-.code-in { font: 20px var(--mono); padding: 6px 10px; border: 2px solid var(--line); border-radius: 8px; width: 100%; }
-.toast.ok { background: var(--ok); } .toast.bad { background: var(--bad); }
-.teacher-btn { background: transparent; color: #b9cbd2; border: 1px solid #3d5b6c; border-radius: 999px; padding: 5px 11px; font-size: 14px; cursor: pointer; }
-.teacher-btn[aria-pressed="true"] { background: #ffd84d; color: var(--nav); font-weight: 700; border-color: #ffd84d; }
-/* Data table + teacher key */
-.data-wrap { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-.data-table th, .data-table td { border: 1px solid #d5dde3; padding: 4px 6px; text-align: center; }
-.data-table th { background: #e6f3f1; font-size: 13px; }
-.data-table td.empty { color: #b7c2c8; }
-.key-box { border: 2px dashed #e0b300; background: #fffbea; }
-.key-box h3 { color: #7a5b00; }
-.key-box .note { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
-/* Mystery: measure-a-block panel */
-.pick-row { display: flex; gap: 5px; margin: 2px 0 6px; flex-wrap: wrap; }
-.pick-row button { font: 700 14px var(--mono); padding: 4px 8px; border-radius: 6px; border: 2px solid var(--line); background: #fff; cursor: pointer; }
-.pick-row button[aria-pressed="true"] { border-color: #ff7a59; background: #fff1ec; }
-.pick-row button.done { border-color: var(--ok); color: var(--ok); }
-.meas { display: grid; grid-template-columns: auto minmax(0, 1fr) 42px; gap: 4px 8px; align-items: center; }
-.meas label { font-weight: 700; font-size: 14px; }
-.meas input { width: 100%; min-width: 0; font: 700 16px var(--mono); padding: 2px 8px; border: 2px solid var(--line); border-radius: 6px; background: #fff; }
-.meas input.ok { border-color: var(--ok); background: var(--ok-bg); }
-.meas input.bad { border-color: var(--bad); background: var(--bad-bg); }
-.meas input:disabled { color: var(--ink); }
-.meas span { font: 14px var(--mono); color: var(--muted); }
-.meas-check { margin-top: 6px; width: 100%; font-size: 15px; padding: 4px; }
-#measStatus { margin-top: 4px; }
-.pop .checks { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
-.pop .checks li { background: #fff; border-radius: 8px; padding: 6px 10px; }
-.pop .checks li.ok { color: var(--ok); font-weight: 700; }
-.small-btn:disabled { opacity: .45; cursor: default; }
-.steps { margin: 4px 0 0; padding-left: 20px; font-size: 15px; line-height: 1.4; }
-.tri-panel { padding-bottom: 12px; }
-.tri-panel .tri { margin-top: 4px; }
-.howto { max-height: 252px; overflow-y: auto; }
-.steps li { margin: 2px 0; }
+.calc { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 12px; align-items: center; }
+.row label { font-size: 0.98rem; }
+.row label small { display: block; color: var(--muted); font-size: 0.82rem; }
+.row .fb { grid-column: 1 / -1; margin: 0; }
+.given { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--chip); border-radius: 10px; font-size: 0.98rem; }
+.given b { font-family: var(--mono); }
+.calcbox { border: 1px solid var(--line); border-radius: 10px; background: var(--chip); margin: 0 0 12px; }
+.calcbox summary { padding: 9px 12px; font-weight: 700; cursor: pointer; }
+.calcbody { padding: 0 12px 12px; max-width: 290px; }
+.cexpr { width: 100%; font: 600 1.2rem var(--mono); text-align: right; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--input-bg); color: var(--ink); }
+.cout { min-height: 1.5em; margin: 2px 4px 8px; text-align: right; font: 600 1rem var(--mono); color: var(--muted); }
+.cout.err { color: var(--bad); }
+.ckeys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ck { font: 700 1.15rem var(--mono); min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.ck:active { transform: translateY(1px); }
+.ck.op { color: var(--accent); }
+.ck.eq { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.rule { margin: 0 0 10px; padding: 9px 12px; border-left: 5px solid var(--frame); background: var(--chip); border-radius: 8px; font-size: 0.95rem; }
+.panels.tubes { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+svg.pv.tv { width: auto; height: 230px; margin: 6px auto; max-width: 100%; }
+.msg { margin: 8px 0 0; color: var(--bad); font-weight: 600; min-height: 1.4em; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
 
-/* ---------- Bottom bar ---------- */
-.nav { background: var(--nav); color: #fff; border-radius: 10px 10px 0 0; display: flex; align-items: center; gap: 12px; padding: 6px 14px; flex-wrap: wrap; }
-.nav .brand { font-size: 22px; font-weight: 700; margin-right: auto; }
-.langs { display: flex; border: 1px solid #3d5b6c; border-radius: 999px; overflow: hidden; }
-.langs button { background: transparent; color: #b9cbd2; border: 0; padding: 5px 11px; font-size: 14px; cursor: pointer; }
-.langs button + button { border-left: 1px solid #3d5b6c; }
-.langs button[aria-pressed="true"] { background: var(--nav-on); color: var(--nav); font-weight: 700; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--nav); color: #fff; padding: 10px 16px; border-radius: 8px; z-index: 60; max-width: calc(100% - 32px); }
-.nav .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-.tab { background: transparent; border: 0; color: #b9cbd2; cursor: pointer; padding: 4px 10px 2px; border-radius: 6px; display: grid; justify-items: center; gap: 2px; font-size: 14px; }
-.tab .ico { width: 44px; height: 28px; border-radius: 4px; background: #24475a; position: relative; overflow: hidden; }
-.tab .ico i { position: absolute; bottom: 4px; width: 12px; height: 12px; }
-.tab[aria-current="page"] { color: var(--nav-on); }
-.tab[aria-current="page"] .ico { color: var(--nav) !important; background: #e8f3f2; outline: 2px solid var(--nav-on); }
-.tab:hover { color: #fff; }
+.result { display: grid; gap: 6px; }
+.result .r { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px; border-radius: 10px; background: var(--chip); }
+.result .r b { font-family: var(--mono); }
+.result .r.big { background: var(--accent); color: var(--accent-ink); }
+.lesson ol { margin: 8px 0 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.lesson li b { font-weight: 700; }
+.lesson code, .lesson .calc-line { font-family: var(--mono); font-size: 0.93rem; background: var(--chip); padding: 1px 6px; border-radius: 6px; }
+.lesson p { margin: 10px 0 0; }
+.lesson .why { border-left: 4px solid var(--frame); padding-left: 12px; }
+.mistake { color: var(--bad); }
 
-/* ---------- Home ---------- */
-.home { background: linear-gradient(#f7a072, #fde4c3 66%, #3a8fa0 66%, #2a6f80 76%, #d9bf8c 76%, #cfa96e 84%); border-radius: 0 0 10px 10px; padding: 28px 20px 40px; }
-.home h1 { margin: 0 0 4px; color: #fff; font-size: clamp(28px, 5vw, 44px); text-shadow: 0 2px 6px rgba(0,0,0,.25); text-wrap: balance; }
-.home p.lead { margin: 0 0 20px; color: #fff; font-size: 18px; text-shadow: 0 1px 3px rgba(0,0,0,.3); max-width: 60ch; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-.card { background: var(--panel); border: 2px solid transparent; border-radius: 10px; padding: 14px; text-align: left; cursor: pointer; display: grid; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-.card:hover { border-color: var(--accent); }
-.card strong { font-size: 19px; }
-.card span { color: var(--muted); font-size: 15px; }
-.card .pic { height: 46px; position: relative; background: #e6f3f1; border-radius: 6px; overflow: hidden; }
-.card .pic i { position: absolute; bottom: 6px; }
+.tagbar { height: 12px; background: var(--chip); border-radius: 999px; overflow: hidden; margin: 8px 0; }
+.tagbar i { display: block; height: 100%; width: 0; background: var(--frame); transition: width .2s; }
+.tagcount { font: 700 1.5rem var(--mono); }
+.nets { display: grid; gap: 10px; }
+.net { border: 2px dashed var(--accent); border-radius: 10px; padding: 6px; background: var(--input-bg); }
+.net .pname { background: transparent; padding: 2px 4px 6px; }
+.net svg { display: block; width: 100%; height: auto; }
 
-/* ---------- Test ---------- */
-.test { background: var(--panel); border-radius: 0 0 10px 10px; padding: 20px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
-@media (max-width: 820px) { .test { grid-template-columns: minmax(0, 1fr); } }
-.test h2 { margin: 0; font-size: 26px; }
-.test .sub { margin: 4px 0 0; color: var(--muted); }
-.clues { display: grid; gap: 8px; margin: 14px 0; padding: 0; list-style: none; }
-.clues li { font-family: var(--mono); font-size: 30px; font-weight: 700; background: #f2f6f9; border: 1px solid #d5dde3; border-radius: 8px; padding: 6px 16px; display: flex; align-items: baseline; gap: 12px; }
-.clues li .u { color: var(--accent); }
-.clues li.missing { background: #fff; border: 2px dashed var(--line); color: var(--muted); font-size: 22px; }
-.answer { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-.answer label { display: grid; gap: 2px; font-weight: 700; font-size: 15px; }
-.answer input, .answer select { font-size: 22px; padding: 6px 10px; border: 2px solid var(--line); border-radius: 8px; background: #fff; }
-.answer input { width: 9ch; font-family: var(--mono); }
-.big-btn { font-size: 19px; font-weight: 700; padding: 9px 18px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
-.big-btn.alt { background: #fff; color: var(--accent); border: 2px solid var(--accent); }
-.big-btn:disabled { opacity: .45; cursor: default; }
-.msg { min-height: 1.4em; color: var(--bad); font-weight: 700; margin: 6px 0 0; }
-.score { display: flex; gap: 10px; flex-wrap: wrap; }
-.score div { background: #f2f6f9; border-radius: 8px; padding: 8px 14px; }
-.score b { display: block; font-size: 26px; font-family: var(--mono); }
-.side { display: grid; gap: 12px; align-content: start; }
-.box { border: 1px solid #d5dde3; border-radius: 10px; padding: 12px; }
-.box h3 { margin: 0 0 6px; font-size: 18px; }
-.unit-key { width: 100%; border-collapse: collapse; font-size: 15px; }
-.unit-key td { padding: 3px 6px; border-bottom: 1px solid #e6eaee; }
-.unit-key td:first-child { font-family: var(--mono); font-weight: 700; width: 70px; }
-.unit-key tr.no td { color: var(--muted); }
-/* Keypad calculator */
-.keycalc { max-width: 300px; display: grid; gap: 6px; }
-.keycalc .screen { background: #0f2c3d; color: #fff; border-radius: 8px; padding: 6px 10px; text-align: right; font-family: var(--mono); }
-.keycalc .expr { font-size: 14px; color: #b9cbd2; min-height: 1.3em; word-break: break-all; }
-.keycalc input { width: 100%; background: transparent; border: 0; color: #fff; font: 700 26px var(--mono); text-align: right; padding: 0; }
-.keycalc .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.keycalc .keys button { font: 700 21px var(--mono); padding: 9px 0; border-radius: 8px; border: 1px solid #c3d0d3; background: #fff; cursor: pointer; touch-action: manipulation; }
-.keycalc .keys button:active { transform: translateY(1px); }
-.keycalc .keys .op { background: #e6f3f1; color: var(--accent); border-color: #9fcfcc; }
-.keycalc .keys .clr { background: #fdeceb; color: var(--bad); border-color: #f0b9b5; grid-column: span 2; font-family: var(--font); font-size: 17px; }
-.keycalc .keys .eqk { background: var(--accent); color: #fff; border-color: var(--accent); grid-column: span 2; }
-.keycalc .use { font-size: 15px; padding: 6px 10px; }
+.animal .hit { fill: transparent; }
+.animal .rk, .animal .rg, .animal .cg { display: none; fill: none; }
+.animal.tagged .rk, .animal.tagged .rg { display: block; }
+.rk { stroke: #1b1b1b; stroke-width: 5.2; }
+.rg { stroke: #ffd400; stroke-width: 2.8; }
+.animal.caught .cg { display: block; stroke: #fff; stroke-width: 2; stroke-dasharray: 4 3; }
+@keyframes tagpop { from { stroke-width: 10; opacity: 0; } to { stroke-width: 2.8; opacity: 1; } }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.animal.tagged .rg { animation: tagpop .5s ease-out; }
+.animal.caught .cg { animation: fadein .4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .tagbar i { transition: none; } .animal .rg, .animal .cg { animation: none !important; } }
 
-/* Tools strip under the scene */
-.tools { background: var(--panel); border-radius: 0 0 10px 10px; padding: 12px 14px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); border-top: 1px solid #c9d2d9; }
-.tools .box { min-width: 0; }
-.formulas { font-family: var(--mono); font-size: 17px; line-height: 1.6; }
-
-/* Density triangle (CSS only) */
-.tri-wrap { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-.tri { width: 150px; height: 128px; position: relative; flex: none; }
-.tri::before { content: ""; position: absolute; inset: 0; background: #f6c177; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.tri span { position: absolute; font-family: var(--mono); font-weight: 700; font-size: 24px; }
-.tri .m { top: 40px; left: 0; right: 0; text-align: center; }
-.tri .bar { position: absolute; top: 76px; left: 38px; right: 38px; height: 3px; background: var(--ink); }
-.tri .d { top: 88px; left: 34px; } .tri .x { top: 88px; left: 0; right: 0; text-align: center; } .tri .v { top: 88px; right: 34px; }
-.tri.small { transform: scale(.7); transform-origin: left center; width: 105px; margin-right: -45px; }
-
-/* ---------- Popup + confetti ---------- */
-.overlay { position: fixed; inset: 0; background: rgba(10, 20, 30, .45); display: grid; place-items: center; z-index: 40;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.pop { width: min(560px, 100%); max-height: 90vh; overflow: auto; background: var(--panel); border-radius: 14px; padding: 18px 20px; border-top: 10px solid; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
-.pop.ok { border-color: var(--ok); background: var(--ok-bg); }
-.pop.bad { border-color: var(--bad); background: var(--bad-bg); }
-.pop h2 { margin: 0 0 8px; display: flex; align-items: center; gap: 10px; font-size: 26px; }
-.pop.ok h2 { color: var(--ok); } .pop.bad h2 { color: var(--bad); }
-.pop .badge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 24px; flex: none; }
-.pop.ok .badge { background: var(--ok); } .pop.bad .badge { background: var(--bad); }
-.pop .body { font-size: 17px; }
-.pop .body p { margin: 6px 0; }
-.pop .math { font-family: var(--font); font-variant-numeric: tabular-nums; background: #fff; border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 16px; }
-.pop .yours { color: var(--bad); font-weight: 700; }
-.pop .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
-.pop.bad .big-btn { background: var(--bad); }
-.pop.ok .big-btn { background: var(--ok); }
-.pop .big-btn.alt { background: #fff; color: var(--ink); border: 2px solid var(--line); }
-#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
-.narrow-note { display: none; color: var(--muted); font-size: 14px; margin: 6px 0 0; }
-@media (max-width: 700px) { .narrow-note { display: block; } }
+@media (max-width: 980px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  .scene-col { position: static; }
+  svg.scene { max-height: none; }
+  .row { grid-template-columns: minmax(0, 1fr) 130px; }
+}
 </style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs id="defs"></defs></svg>
 
-<div class="app">
-  <!-- Screen picker + language buttons, at the top of the page -->
-  <nav class="nav" aria-label="Screens">
-    <span class="brand" data-i="title"></span>
-    <div class="langs" role="group" aria-label="Language / Idioma / Ngôn ngữ">
-      <button data-lang="en" lang="en">English</button><button data-lang="es" lang="es">Español</button><button data-lang="vi" lang="vi">Tiếng Việt</button>
+<div class="wrap">
+  <header>
+    <div class="title-block">
+      <h1>Sample &amp; Estimate</h1>
+      <p class="tagline">Count a few. Estimate the whole population.</p>
     </div>
-    <button class="teacher-btn" id="teacherBtn" aria-pressed="false">Teacher</button>
-    <div class="tabs">
-      <button class="tab" data-go="home"><span class="ico" style="display:grid;place-items:center;font-size:18px;color:#fff">⌂</span><span data-i="tab_home"></span></button>
-      <button class="tab" data-go="intro"><span class="ico"><i style="left:16px;background:#8a5a2b"></i></span><span data-i="tab_intro"></span></button>
-      <button class="tab" data-go="compare"><span class="ico"><i style="left:8px;background:#e2342d;width:9px;height:9px"></i><i style="left:18px;background:#f7d117;width:9px;height:9px"></i><i style="left:28px;background:#2e9e44;width:9px;height:9px"></i></span><span data-i="tab_compare"></span></button>
-      <button class="tab" data-go="mystery"><span class="ico"><i style="left:16px;background:#81b29a"></i></span><span data-i="tab_mystery"></span></button>
-      <button class="tab" data-go="test"><span class="ico" style="display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:12px;color:#fff">g/mL</span><span data-i="tab_test"></span></button>
+    <div class="formula" id="formula" aria-live="polite"></div>
+  </header>
+
+  <section class="controls" aria-label="Practice">
+    <div class="ctrl">
+      <span class="ctrl-label" id="lblMode">Practice</span>
+      <div class="seg" role="group" aria-labelledby="lblMode" id="modeSeg">
+        <button type="button" data-mode="quad" aria-pressed="true">Quadrat practice</button>
+        <button type="button" data-mode="liquid" aria-pressed="false">Liquid practice</button>
+        <button type="button" data-mode="mark" aria-pressed="false">Mark-recapture practice</button>
+      </div>
     </div>
-  </nav>
-  <!-- HOME -->
-  <section id="home" class="home" aria-label="Density Lab">
-    <h1 data-i="title">Density Lab</h1>
-    <p class="lead" data-i="lead"></p>
-    <div class="cards">
-      <button class="card" data-go="intro"><div class="pic"><i style="left:20px;width:30px;height:30px;background:#8a5a2b"></i></div><strong data-i="tab_intro"></strong><span data-i="card_intro"></span></button>
-      <button class="card" data-go="compare"><div class="pic"><i style="left:12px;width:26px;height:26px;background:#e2342d"></i><i style="left:42px;width:26px;height:26px;background:#f7d117"></i><i style="left:72px;width:26px;height:26px;background:#2e9e44"></i><i style="left:102px;width:26px;height:26px;background:#1f5fd6"></i></div><strong data-i="tab_compare"></strong><span data-i="card_compare"></span></button>
-      <button class="card" data-go="mystery"><div class="pic"><i style="left:20px;width:30px;height:30px;background:#3d5a80"></i><i style="left:56px;width:22px;height:22px;background:#81b29a"></i></div><strong data-i="tab_mystery"></strong><span data-i="card_mystery"></span></button>
-      <button class="card" data-go="test"><div class="pic"><i style="left:16px;bottom:10px;font-style:normal;font-family:var(--mono);font-weight:700;font-size:20px">? g/mL</i></div><strong data-i="tab_test"></strong><span data-i="card_test"></span></button>
+    <div class="ctrl" id="levelCtrl">
+      <span class="ctrl-label" id="lblLevel">Level</span>
+      <div class="seg" role="group" aria-labelledby="lblLevel" id="levelSeg">
+        <button type="button" data-level="easy" aria-pressed="true">Easy</button>
+        <button type="button" data-level="medium" aria-pressed="false">Medium</button>
+        <button type="button" data-level="hard" aria-pressed="false">Hard</button>
+      </div>
     </div>
+    <span class="spacer"></span>
+    <button type="button" class="btn primary" id="newBtn">New problem</button>
   </section>
-
-  <!-- SIM SCREENS (Intro / Compare / Mystery share one scene) -->
-  <div id="sim" class="stage-scroll" hidden>
-    <div class="stage-outer" id="stageOuter">
-      <div class="stage-inner" id="stageInner">
-        <canvas id="scene" data-ia="sceneAria"></canvas>
-
-        <!-- Intro panels -->
-        <div class="panel" data-for="intro" style="right:10px;top:10px;width:190px">
-          <h3 data-i="material"></h3>
-          <div id="matRadios"></div>
-        </div>
-        <div class="panel" data-for="intro" style="right:10px;top:248px;width:280px">
-          <div id="introSliders"></div>
-          <div class="eq" id="introEq"></div>
-        </div>
-
-        <!-- Compare panels -->
-        <div class="panel" data-for="compare" style="right:10px;top:10px;width:200px">
-          <h3 data-i="blocks"></h3>
-          <label><input type="radio" name="cmode" id="cm-volume" value="volume" checked> <span data-i="sameVolume"></span></label>
-          <label><input type="radio" name="cmode" id="cm-mass" value="mass"> <span data-i="sameMass"></span></label>
-          <label><input type="radio" name="cmode" id="cm-density" value="density"> <span data-i="sameDensity"></span></label>
-        </div>
-        <div class="panel" data-for="compare" style="right:10px;top:248px;width:280px">
-          <div id="compareSlider"></div>
-          <p class="note" id="compareQ"></p>
-        </div>
-
-        <!-- Mystery panels -->
-        <div class="panel" data-for="mystery" style="right:10px;top:10px;width:160px">
-          <h3 data-i="blocks"></h3>
-          <label><input type="radio" name="mset" id="ms-1" value="1" checked> <span data-i="set"></span> 1</label>
-          <label><input type="radio" name="mset" id="ms-2" value="2"> <span data-i="set"></span> 2</label>
-          <label><input type="radio" name="mset" id="ms-3" value="3"> <span data-i="set"></span> 3</label>
-          <label><input type="radio" name="mset" id="ms-r" value="r"> <span data-i="random"></span></label>
-        </div>
-        <button class="panel table-btn" data-for="mystery" id="tableBtn" aria-expanded="false"><span class="plus" id="tablePlus">+</span> <span data-i="densityTable"></span></button>
-        <div class="panel dtable" id="dtable" hidden>
-          <table id="dtableBody"></table>
-          <p class="note" data-i="tableNote"></p>
-        </div>
-        <div class="panel" data-for="mystery" style="right:10px;top:236px;width:282px">
-          <h3 data-i="measureT"></h3>
-          <div class="pick-row" id="pickRow" role="group"></div>
-          <div class="meas">
-            <label for="inMass" data-i="mass"></label><input id="inMass" inputmode="decimal" autocomplete="off"><span>g</span>
-            <label for="inVol" data-i="volume"></label><input id="inVol" inputmode="decimal" autocomplete="off"><span>mL</span>
-            <label for="inDen" data-i="density"></label><input id="inDen" inputmode="decimal" autocomplete="off"><span>g/mL</span>
-          </div>
-          <button class="big-btn meas-check" id="measCheck" data-i="check"></button>
-          <p class="note" id="measStatus" role="status"></p>
-        </div>
-        <!-- Density triangle: bottom-left of the scene on Intro, Compare and Mystery -->
-        <div class="panel tri-panel" data-for="intro compare mystery" style="left:10px;top:244px">
-          <h3 data-i="triangle"></h3>
-          <div class="tri" data-ia="triAria"><span class="m">m</span><span class="bar"></span><span class="d">D</span><span class="x">×</span><span class="v">V</span></div>
-        </div>
-
-        <button class="reset" id="resetBtn" data-ia="reset">↻</button>
-        <div class="sim-btns">
-          <button class="chip-btn" id="pushBtn" aria-pressed="false"></button>
-        </div>
+  <section class="controls tests" aria-label="Tests">
+    <div class="ctrl">
+      <span class="ctrl-label" id="lblTest">Test yourself</span>
+      <div class="seg test" role="group" aria-labelledby="lblTest" id="testSeg">
+        <button type="button" data-test="sampling" aria-pressed="false">Random sampling test</button>
+        <button type="button" data-test="mark" aria-pressed="false">Mark and recapture test</button>
       </div>
     </div>
-  </div>
-
-  <!-- TOOLS STRIP under the scene: calculator (+ "How to solve" on Mystery) -->
-  <section id="tools" class="tools" hidden>
-    <div class="box">
-      <h3 data-i="calc"></h3>
-      <div class="keycalc" id="calcSim"></div>
-    </div>
-    <div class="box" data-for="mystery">
-      <h3 data-i="myData"></h3>
-      <div class="data-wrap"><table class="data-table" id="dataTable"></table></div>
-    </div>
-    <div class="box" data-for="mystery">
-      <h3 data-i="howTo"></h3>
-      <ol class="steps">
-        <li data-ih="step1"></li>
-        <li data-ih="step2"></li>
-        <li data-ih="step3"></li>
-      </ol>
-    </div>
+    <p class="testnote">5 questions, easy and medium. Every box has to be right for the question to count.</p>
   </section>
+  <div class="card testbar" id="testbar" hidden></div>
 
-  <!-- TEST -->
-  <section id="test" class="test" hidden>
-    <div>
-      <h2 data-i="testTitle"></h2>
-      <p class="sub" data-ih="testSub"></p>
-      <ul class="clues" id="clues"></ul>
-      <div class="answer">
-        <label for="ansNum"><span data-i="yourAnswer"></span><input id="ansNum" inputmode="decimal" autocomplete="off" placeholder="?"></label>
-        <label for="ansUnit"><span data-i="unit"></span><select id="ansUnit"></select></label>
-        <button class="big-btn" id="checkBtn" data-i="check"></button>
-        <button class="big-btn alt" id="nextBtn" data-i="newProblem"></button>
-      </div>
-      <p class="msg" id="testMsg" role="status"></p>
-    </div>
-    <div class="side">
-      <div class="score">
-        <div><span data-i="scCorrect"></span><b id="scCorrect">0</b></div>
-        <div><span data-i="scTried"></span><b id="scTried">0</b></div>
-        <div><span data-i="scStreak"></span><b id="scStreak">0</b></div>
-      </div>
-      <div class="box">
-        <h3 data-i="triangle"></h3>
-        <div class="tri-wrap">
-            <div class="tri" data-ia="triAria"><span class="m">m</span><span class="bar"></span><span class="d">D</span><span class="x">×</span><span class="v">V</span></div>
-        </div>
-      </div>
-      <div class="box">
-        <button class="big-btn alt" id="speakBtn" style="font-size:16px;padding:6px 12px" data-i="readAloud"></button>
-        <button class="big-btn alt" id="hintBtn" style="font-size:16px;padding:6px 12px" aria-expanded="false"></button>
-        <div id="hintBox" hidden style="margin-top:10px">
-          <table class="unit-key">
-            <tr><td>g</td><td data-i="massL"></td></tr>
-            <tr><td>mL, cm³</td><td data-i="volumeL"></td></tr>
-            <tr><td>g/mL, g/cm³</td><td data-i="densityL"></td></tr>
-            <tr><td>1 mL</td><td>= 1 cm³</td></tr>
-            <tr class="no"><td>cm</td><td data-i="widthNote"></td></tr>
-            <tr class="no"><td>°F</td><td data-i="tempNote"></td></tr>
-          </table>
-        </div>
-      </div>
-      <div class="box">
-        <h3 data-i="calc"></h3>
-        <div class="keycalc" id="calcTest"></div>
-      </div>
-    </div>
-  </section>
-
-  <p class="narrow-note" data-i="narrow"></p>
+  <main>
+    <section class="scene-col" aria-label="The habitat">
+      <div class="card story" id="story"></div>
+      <div id="scene"></div>
+      <p class="legend" id="legend"></p>
+    </section>
+    <section class="work-col" id="work" aria-label="Worksheet"></section>
+  </main>
 </div>
-
-<div class="overlay" id="overlay" hidden>
-  <div class="pop" id="pop" role="dialog" aria-modal="true" aria-labelledby="popTitle">
-    <h2><span class="badge" id="popBadge"></span><span id="popTitle"></span></h2>
-    <div class="body" id="popBody"></div>
-    <div class="actions">
-      <button class="big-btn alt" id="popSpeak" data-i="readAloud"></button>
-      <button class="big-btn" id="popClose">OK</button>
-    </div>
-  </div>
-</div>
-<div class="toast" id="toast" role="status" hidden></div>
-
-<!-- Teacher code -->
-<div class="overlay" id="codeOverlay" hidden>
-  <div class="pop pred" role="dialog" aria-modal="true" aria-labelledby="codeTitle">
-    <h2 id="codeTitle">Teacher code</h2>
-    <p>Type the teacher code to show answer keys.</p>
-    <input id="codeIn" type="password" autocomplete="off" aria-label="Teacher code" class="code-in">
-    <p class="msg" id="codeMsg" role="status"></p>
-    <div class="actions">
-      <button class="big-btn alt" id="codeCancel">Cancel</button>
-      <button class="big-btn" id="codeGo">Unlock</button>
-    </div>
-  </div>
-</div>
-
-<!-- Teacher answer key (moved under the scene or into the Test side column) -->
-<div class="box key-box" id="keyBox" hidden></div>
-<canvas id="confetti" aria-hidden="true"></canvas>
 
 <script>
-/* =====================================================================
-   DENSITY LAB
-   Screens: Home, Intro, Compare, Mystery (all share one canvas scene), Test.
-   Units everywhere: grams (g), milliliters (mL = cm³), g/mL.
-   ===================================================================== */
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const rnd = Math.random;
+const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+const pick = a => a[Math.floor(rnd() * a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rd = x => Math.round(x * 1e6) / 1e6;
+const r1 = x => Math.round((x + Number.EPSILON) * 10) / 10;
+const f1 = x => r1(x).toFixed(1);
+const trim = (x, d = 3) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace(/\.?0+$/, '');
+const fmtN = x => trim(x, 4);
+const sum = a => a.reduce((s, v) => s + v, 0);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const parseNum = s => { const t = String(s).trim(); return /^-?(\d+\.?\d*|\.\d+)$/.test(t) ? parseFloat(t) : NaN; };
+const star = (n, ro, ri_) => { const p = []; for (let i = 0; i < n * 2; i++) { const r = i % 2 ? ri_ : ro, a = Math.PI * i / n - Math.PI / 2; p.push((r * Math.cos(a)).toFixed(2) + ',' + (r * Math.sin(a)).toFixed(2)); } return p.join(' '); };
 
-// =====================================================================
-//  LANGUAGES: English, Spanish, Vietnamese
-//  Every word students see lives here. {x} marks a blank that the code fills in.
-//  Science words match Density Detective: Densidad / Khối lượng riêng (density),
-//  Masa / Khối lượng (mass), Volumen / Thể tích (volume).
-//  NOTE for teacher: the Spanish and Vietnamese were machine-written. Please have a native speaker check them.
-// =====================================================================
-const LANG = {
-  en: {
-    speech: 'en-US',
-    say: { 'g': 'grams', 'mL': 'milliliters', 'cm³': 'cubic centimeters', 'g/mL': 'grams per milliliter', 'g/cm³': 'grams per cubic centimeter', 'cm': 'centimeters', '°F': 'degrees Fahrenheit' },
-    title: 'Density Lab',
-    lead: 'Drop blocks in water, measure mass and volume, and find density in g/mL.',
-    tab_home: 'Home', tab_intro: 'Intro', tab_compare: 'Compare', tab_mystery: 'Mystery', tab_test: 'Test',
-    card_intro: "Change one block's mass and volume. Watch the density.",
-    card_compare: 'Same mass, same volume, or same density. What changes?',
-    card_mystery: 'Weigh it, dunk it, and name the material.',
-    card_test: 'Use the units to find the missing value.',
-    sceneAria: 'Water tank with blocks. Drag blocks into the water.',
-    material: 'Material', custom: 'Custom', blocks: 'Blocks',
-    mass: 'Mass', volume: 'Volume', density: 'Density',
-    massL: 'mass', volumeL: 'volume', densityL: 'density', widthL: 'width', tempL: 'temperature',
-    theMass: 'the mass', theVolume: 'the volume', theDensity: 'the density',
-    massG: 'Mass (g)', volML: 'Volume (mL)', denGML: 'Density (g/mL)',
-    sameMass: 'Same Mass', sameVolume: 'Same Volume', sameDensity: 'Same Density',
-    showOn: 'Show on blocks',
-    waterNote: "1 mL = 1 cm³. Water's density is 1.00 g/mL. Blocks with a <b>lower</b> density float. Blocks with a <b>higher</b> density sink.",
-    decrease: 'Decrease {x}', increase: 'Increase {x}',
-    floats: '(floats)', sinks: '(sinks)', sameAsWater: '(same as water)',
-    q_mass: 'All four blocks have the same mass. Why do some take up more space? Which ones float?',
-    q_volume: 'All four blocks take up the same space. Which is heaviest? Does the heaviest one sink?',
-    q_density: 'All four blocks are made of the same stuff. Does size change whether they float?',
-    set: 'Set', random: 'Random', densityTable: 'Density Table',
-    tableHead: 'Density in g/mL (same as g/cm³)',
-    tableNote: 'Typical values at room temperature. Real wood, brick, and foam vary.',
-    nameEach: 'Name each block', howTo: 'How to solve',
-    step1: 'Put a block on the <b>scale</b>. Write the mass (g).',
-    step2: 'Drop it in the water. Volume = new level − 5000 mL.',
-    step3: 'It floats? Press <b>Hold floaters under</b> (or hold it under with the mouse) to read the full volume.',
-    step4: 'Density = mass ÷ volume. Match it in the table.',
-    reset: 'Reset this screen', water: 'Water',
-    triangle: 'Density triangle', triAria: 'Density triangle: m on top, D times V on the bottom', calc: 'Calculator',
-    choose: 'Choose…', check: 'Check', matFor: 'Material for block {b}',
-    idStart: 'Pick a material for a block, then press Check.',
-    holdUnder: 'Hold floaters under', letFloat: 'Let floaters float',
-    floatsW: 'floats', sinksW: 'sinks',
-    myData: 'My data', colBlock: 'Block', colSF: 'Sink / Float',
-    measureT: 'Measure a block', needAll: 'Fill in mass, volume, and density.', doneCount: 'Done: {n} of {t} blocks', tryAgain: 'Try again',
-    mOkT: 'Correct! You measured {b}.', mOkB: 'Mass {m} g, volume {v} mL, density {d} g/mL. That matches {mat} in the Density Table.',
-    mBadT: 'Try again', mGood: '{q}: ✓ correct',
-    massBad: '<b>Mass:</b> put {b} on the scale and read the grams.',
-    volBad: '<b>Volume:</b> read the water level with {b} in the water, then subtract 5000 mL. If it floats, hold it all the way under the water.',
-    denBadYours: '<b>Density:</b> divide mass by volume. With your numbers: {m} g ÷ {v} mL = {d} g/mL.',
-    denBad: '<b>Density</b> = mass ÷ volume.',
-    reveal: 'Here are the right measurements: mass {m} g, volume {v} mL, density {d} g/mL.',
-    pickFirstT: 'Pick a material first',
-    pickFirstB: 'Use the menu next to <b>{b}</b> to choose a material, then press Check.',
-    mysMass: 'Mass (on the scale) = {m} g',
-    mysVol: 'Volume: water rises from 5000 mL to {lv} mL → V = {v} mL',
-    mysFloat: "This block <b>floats</b> (its density is less than water's 1.00 g/mL). A floating block only pushes aside part of its volume, so you must <b>hold it all the way under</b> the water to read its full volume.",
-    mysOkT: 'Correct! {b} is {mat}.',
-    mysOkB: '{d} g/mL matches {mat} ({md} g/mL) in the Density Table.',
-    mysOkS: 'Correct! {b} is {mat}. Density equals {m} grams divided by {v} milliliters, which is {d} grams per milliliter.',
-    mysBadT: 'Not quite. {b} is {mat}.',
-    mysYou: 'You picked {g} ({gd} g/mL).',
-    mysClosest: 'The closest match in the Density Table is <b>{mat}</b> at {md} g/mL.',
-    mysBadS: 'Not quite. You picked {g}. {b} is {mat}. Its mass is {m} grams. Its volume is {v} milliliters. Mass divided by volume is {d} grams per milliliter, which matches {mat}.',
-    testTitle: 'Find the missing value',
-    testSub: "You get 4 clues. Two of them don't help. Use the <b>units</b> to decide what is missing, then solve.",
-    yourAnswer: 'Your answer', unit: 'Unit', newProblem: 'New problem', nextProblem: 'Next problem', ok: 'OK',
-    scCorrect: 'Correct', scTried: 'Tried', scStreak: 'Streak',
-    readAloud: 'Read aloud', showHint: 'Show unit hint', hideHint: 'Hide unit hint',
-    widthNote: 'width (not used for density)', tempNote: 'temperature (not used for density)',
-    needBoth: 'Type a number and choose a unit.',
-    notNeeded: '(not needed)', and: 'and', or: 'or',
-    mlcmCancel: '(1 mL = 1 cm³, so these units cancel.)',
-    sameThing: '(Same thing: {a} g/mL = {a} g/cm³.)', sameVol: '(Same thing: {a} mL = {a} cm³.)',
-    tOkT: 'Correct!',
-    tOkB: 'The missing value was <b>{q}</b>. You had {have}.',
-    tExtra: "Width and temperature were extra clues. Density doesn't use them.",
-    tOkS: 'Correct! The missing value was {q}. {eq}',
-    tBadT: 'Not quite',
-    tYour: 'Your answer: {a}.',
-    numOkUnitBad: 'Your number is right, but the unit is wrong.',
-    unitOkNumBad: 'Your unit is right, but the number is off.',
-    bothBad: 'The number and the unit are both off.',
-    step1T: '1. Sort the clues by unit:',
-    step2T: "<b>2. What's missing?</b> You have {have}, so the missing value is <b>{q}</b> (unit: {u}).",
-    step3T: '3. Solve:',
-    tBadS: 'Not quite. Your answer was {a}. {what} You have {have}, so the missing value is {q}. {eq} Width and temperature are not used for density.',
-    clueSpeech: 'Here are your clues. {c} One value is missing. Use the units to decide what is missing, then solve.',
-    sayDensity: 'Density equals mass divided by volume: {m} grams divided by {v} {vu} equals {d} {du}.',
-    sayVolume: 'Volume equals mass divided by density: {m} grams divided by {d} {du} equals {v} {vu}.',
-    sayMass: 'Mass equals density times volume: {d} {du} times {v} {vu} equals {m} grams.',
-    clear: 'Clear', useResult: 'Use result as my answer',
-    calcOps: 'Use numbers and + − × ÷ only', calcDiv0: 'Can’t divide by zero', calcFinish: 'Finish the problem first',
-    noVoice: 'This device has no reading voice for this language.',
-    narrow: 'Tip: this works best on a Chromebook or computer. On a phone, turn it sideways or scroll the scene left and right.',
-    mat_styrofoam: 'Styrofoam', mat_wood: 'Wood (pine)', mat_ice: 'Ice', mat_brick: 'Brick', mat_aluminum: 'Aluminum',
-    mat_diamond: 'Diamond', mat_titanium: 'Titanium', mat_steel: 'Steel', mat_copper: 'Copper', mat_silver: 'Silver',
-    mat_lead: 'Lead', mat_gold: 'Gold',
-  },
-
-  es: {
-    speech: 'es-US',
-    say: { 'g': 'gramos', 'mL': 'mililitros', 'cm³': 'centímetros cúbicos', 'g/mL': 'gramos por mililitro', 'g/cm³': 'gramos por centímetro cúbico', 'cm': 'centímetros', '°F': 'grados Fahrenheit' },
-    title: 'Laboratorio de densidad',
-    lead: 'Echa bloques al agua, mide la masa y el volumen, y encuentra la densidad en g/mL.',
-    tab_home: 'Inicio', tab_intro: 'Introducción', tab_compare: 'Comparar', tab_mystery: 'Misterio', tab_test: 'Examen',
-    card_intro: 'Cambia la masa y el volumen de un bloque. Observa la densidad.',
-    card_compare: 'Misma masa, mismo volumen o misma densidad. ¿Qué cambia?',
-    card_mystery: 'Pésalo, sumérgelo y nombra el material.',
-    card_test: 'Usa las unidades para encontrar el valor que falta.',
-    sceneAria: 'Tanque de agua con bloques. Arrastra los bloques al agua.',
-    material: 'Material', custom: 'Personalizado', blocks: 'Bloques',
-    mass: 'Masa', volume: 'Volumen', density: 'Densidad',
-    massL: 'masa', volumeL: 'volumen', densityL: 'densidad', widthL: 'ancho', tempL: 'temperatura',
-    theMass: 'la masa', theVolume: 'el volumen', theDensity: 'la densidad',
-    massG: 'Masa (g)', volML: 'Volumen (mL)', denGML: 'Densidad (g/mL)',
-    sameMass: 'Misma masa', sameVolume: 'Mismo volumen', sameDensity: 'Misma densidad',
-    showOn: 'Mostrar en los bloques',
-    waterNote: '1 mL = 1 cm³. La densidad del agua es 1.00 g/mL. Los bloques con densidad <b>menor</b> flotan. Los bloques con densidad <b>mayor</b> se hunden.',
-    decrease: 'Bajar {x}', increase: 'Subir {x}',
-    floats: '(flota)', sinks: '(se hunde)', sameAsWater: '(igual que el agua)',
-    q_mass: 'Los cuatro bloques tienen la misma masa. ¿Por qué algunos ocupan más espacio? ¿Cuáles flotan?',
-    q_volume: 'Los cuatro bloques ocupan el mismo espacio. ¿Cuál es el más pesado? ¿El más pesado se hunde?',
-    q_density: 'Los cuatro bloques están hechos del mismo material. ¿El tamaño cambia si flotan o no?',
-    set: 'Grupo', random: 'Al azar', densityTable: 'Tabla de densidades',
-    tableHead: 'Densidad en g/mL (igual que g/cm³)',
-    tableNote: 'Valores típicos a temperatura ambiente. La madera, el ladrillo y el unicel reales varían.',
-    nameEach: 'Nombra cada bloque', howTo: 'Cómo resolver',
-    step1: 'Pon un bloque en la <b>báscula</b>. Anota la masa (g).',
-    step2: 'Échalo al agua. Volumen = nuevo nivel − 5000 mL.',
-    step3: '¿Flota? Presiona <b>Hundir los que flotan</b> (o mantenlo bajo el agua con el ratón) para leer el volumen completo.',
-    step4: 'Densidad = masa ÷ volumen. Búscala en la tabla.',
-    reset: 'Reiniciar esta pantalla', water: 'Agua',
-    triangle: 'Triángulo de densidad', triAria: 'Triángulo de densidad: m arriba, D por V abajo', calc: 'Calculadora',
-    choose: 'Elige…', check: 'Revisar', matFor: 'Material del bloque {b}',
-    idStart: 'Elige un material para un bloque y luego presiona Revisar.',
-    holdUnder: 'Hundir los que flotan', letFloat: 'Dejar que floten',
-    floatsW: 'flota', sinksW: 'se hunde',
-    myData: 'Mis datos', colBlock: 'Bloque', colSF: 'Se hunde / Flota',
-    measureT: 'Mide un bloque', needAll: 'Escribe la masa, el volumen y la densidad.', doneCount: 'Terminados: {n} de {t} bloques', tryAgain: 'Intentar otra vez',
-    mOkT: '¡Correcto! Mediste {b}.', mOkB: 'Masa {m} g, volumen {v} mL, densidad {d} g/mL. Coincide con {mat} en la Tabla de densidades.',
-    mBadT: 'Inténtalo otra vez', mGood: '{q}: ✓ correcto',
-    massBad: '<b>Masa:</b> pon {b} en la báscula y lee los gramos.',
-    volBad: '<b>Volumen:</b> lee el nivel del agua con {b} adentro y réstale 5000 mL. Si flota, mantenlo completamente bajo el agua.',
-    denBadYours: '<b>Densidad:</b> divide la masa entre el volumen. Con tus números: {m} g ÷ {v} mL = {d} g/mL.',
-    denBad: '<b>Densidad</b> = masa ÷ volumen.',
-    reveal: 'Estas son las medidas correctas: masa {m} g, volumen {v} mL, densidad {d} g/mL.',
-    pickFirstT: 'Primero elige un material',
-    pickFirstB: 'Usa el menú junto a <b>{b}</b> para elegir un material y luego presiona Revisar.',
-    mysMass: 'Masa (en la báscula) = {m} g',
-    mysVol: 'Volumen: el agua sube de 5000 mL a {lv} mL → V = {v} mL',
-    mysFloat: 'Este bloque <b>flota</b> (su densidad es menor que la del agua, 1.00 g/mL). Un bloque que flota solo desplaza parte de su volumen, así que debes <b>mantenerlo completamente bajo</b> el agua para leer su volumen completo.',
-    mysOkT: '¡Correcto! {b} es {mat}.',
-    mysOkB: '{d} g/mL coincide con {mat} ({md} g/mL) en la Tabla de densidades.',
-    mysOkS: '¡Correcto! {b} es {mat}. La densidad es {m} gramos entre {v} mililitros, que es {d} gramos por mililitro.',
-    mysBadT: 'Casi. {b} es {mat}.',
-    mysYou: 'Elegiste {g} ({gd} g/mL).',
-    mysClosest: 'Lo que más se acerca en la Tabla de densidades es <b>{mat}</b>, con {md} g/mL.',
-    mysBadS: 'Casi. Elegiste {g}. {b} es {mat}. Su masa es {m} gramos. Su volumen es {v} mililitros. La masa entre el volumen es {d} gramos por mililitro, que coincide con {mat}.',
-    testTitle: 'Encuentra el valor que falta',
-    testSub: 'Tienes 4 pistas. Dos no sirven. Usa las <b>unidades</b> para decidir qué falta y luego resuelve.',
-    yourAnswer: 'Tu respuesta', unit: 'Unidad', newProblem: 'Nuevo problema', nextProblem: 'Siguiente problema', ok: 'OK',
-    scCorrect: 'Correctas', scTried: 'Intentos', scStreak: 'Racha',
-    readAloud: 'Leer en voz alta', showHint: 'Mostrar pista de unidades', hideHint: 'Ocultar pista de unidades',
-    widthNote: 'ancho (no se usa para la densidad)', tempNote: 'temperatura (no se usa para la densidad)',
-    needBoth: 'Escribe un número y elige una unidad.',
-    notNeeded: '(no se necesita)', and: 'y', or: 'o',
-    mlcmCancel: '(1 mL = 1 cm³, así que estas unidades se cancelan.)',
-    sameThing: '(Es lo mismo: {a} g/mL = {a} g/cm³.)', sameVol: '(Es lo mismo: {a} mL = {a} cm³.)',
-    tOkT: '¡Correcto!',
-    tOkB: 'El valor que faltaba era <b>{q}</b>. Tenías {have}.',
-    tExtra: 'El ancho y la temperatura eran pistas de más. La densidad no las usa.',
-    tOkS: '¡Correcto! El valor que faltaba era {q}. {eq}',
-    tBadT: 'Casi',
-    tYour: 'Tu respuesta: {a}.',
-    numOkUnitBad: 'Tu número es correcto, pero la unidad no.',
-    unitOkNumBad: 'Tu unidad es correcta, pero el número no.',
-    bothBad: 'El número y la unidad no son correctos.',
-    step1T: '1. Ordena las pistas por unidad:',
-    step2T: '<b>2. ¿Qué falta?</b> Tienes {have}, así que el valor que falta es <b>{q}</b> (unidad: {u}).',
-    step3T: '3. Resuelve:',
-    tBadS: 'Casi. Tu respuesta fue {a}. {what} Tienes {have}, así que el valor que falta es {q}. {eq} El ancho y la temperatura no se usan para la densidad.',
-    clueSpeech: 'Estas son tus pistas. {c} Falta un valor. Usa las unidades para decidir qué falta y luego resuelve.',
-    sayDensity: 'Densidad es igual a masa entre volumen: {m} gramos entre {v} {vu} es igual a {d} {du}.',
-    sayVolume: 'Volumen es igual a masa entre densidad: {m} gramos entre {d} {du} es igual a {v} {vu}.',
-    sayMass: 'Masa es igual a densidad por volumen: {d} {du} por {v} {vu} es igual a {m} gramos.',
-    clear: 'Borrar', useResult: 'Usar el resultado como mi respuesta',
-    calcOps: 'Usa solo números y + − × ÷', calcDiv0: 'No se puede dividir entre cero', calcFinish: 'Termina el problema primero',
-    noVoice: 'Este dispositivo no tiene voz de lectura para este idioma.',
-    narrow: 'Consejo: funciona mejor en una Chromebook o computadora. En un teléfono, gíralo de lado o desliza la escena a la izquierda y a la derecha.',
-    mat_styrofoam: 'Unicel', mat_wood: 'Madera (pino)', mat_ice: 'Hielo', mat_brick: 'Ladrillo', mat_aluminum: 'Aluminio',
-    mat_diamond: 'Diamante', mat_titanium: 'Titanio', mat_steel: 'Acero', mat_copper: 'Cobre', mat_silver: 'Plata',
-    mat_lead: 'Plomo', mat_gold: 'Oro',
-  },
-
-  vi: {
-    speech: 'vi-VN',
-    say: { 'g': 'gam', 'mL': 'mi-li-lít', 'cm³': 'xăng-ti-mét khối', 'g/mL': 'gam trên mi-li-lít', 'g/cm³': 'gam trên xăng-ti-mét khối', 'cm': 'xăng-ti-mét', '°F': 'độ F' },
-    title: 'Phòng thí nghiệm khối lượng riêng',
-    lead: 'Thả khối vào nước, đo khối lượng và thể tích, rồi tìm khối lượng riêng theo g/mL.',
-    tab_home: 'Trang chủ', tab_intro: 'Giới thiệu', tab_compare: 'So sánh', tab_mystery: 'Bí ẩn', tab_test: 'Kiểm tra',
-    card_intro: 'Thay đổi khối lượng và thể tích của một khối. Quan sát khối lượng riêng.',
-    card_compare: 'Cùng khối lượng, cùng thể tích, hoặc cùng khối lượng riêng. Điều gì thay đổi?',
-    card_mystery: 'Cân nó, nhúng nó vào nước, rồi gọi tên vật liệu.',
-    card_test: 'Dùng đơn vị để tìm giá trị còn thiếu.',
-    sceneAria: 'Bể nước có các khối. Kéo các khối vào nước.',
-    material: 'Vật liệu', custom: 'Tùy chỉnh', blocks: 'Các khối',
-    mass: 'Khối lượng', volume: 'Thể tích', density: 'Khối lượng riêng',
-    massL: 'khối lượng', volumeL: 'thể tích', densityL: 'khối lượng riêng', widthL: 'chiều rộng', tempL: 'nhiệt độ',
-    theMass: 'khối lượng', theVolume: 'thể tích', theDensity: 'khối lượng riêng',
-    massG: 'Khối lượng (g)', volML: 'Thể tích (mL)', denGML: 'Khối lượng riêng (g/mL)',
-    sameMass: 'Cùng khối lượng', sameVolume: 'Cùng thể tích', sameDensity: 'Cùng khối lượng riêng',
-    showOn: 'Hiện trên các khối',
-    waterNote: '1 mL = 1 cm³. Khối lượng riêng của nước là 1.00 g/mL. Khối có khối lượng riêng <b>nhỏ hơn</b> thì nổi. Khối có khối lượng riêng <b>lớn hơn</b> thì chìm.',
-    decrease: 'Giảm {x}', increase: 'Tăng {x}',
-    floats: '(nổi)', sinks: '(chìm)', sameAsWater: '(bằng nước)',
-    q_mass: 'Cả bốn khối có cùng khối lượng. Vì sao có khối chiếm nhiều chỗ hơn? Khối nào nổi?',
-    q_volume: 'Cả bốn khối chiếm cùng một chỗ. Khối nào nặng nhất? Khối nặng nhất có chìm không?',
-    q_density: 'Cả bốn khối làm bằng cùng một chất. Kích thước có làm thay đổi việc nổi hay chìm không?',
-    set: 'Bộ', random: 'Ngẫu nhiên', densityTable: 'Bảng khối lượng riêng',
-    tableHead: 'Khối lượng riêng theo g/mL (giống g/cm³)',
-    tableNote: 'Giá trị thường gặp ở nhiệt độ phòng. Gỗ, gạch và xốp thật có thể khác nhau.',
-    nameEach: 'Gọi tên từng khối', howTo: 'Cách giải',
-    step1: 'Đặt một khối lên <b>cân</b>. Ghi lại khối lượng (g).',
-    step2: 'Thả nó vào nước. Thể tích = mực nước mới − 5000 mL.',
-    step3: 'Nó nổi? Bấm <b>Giữ khối nổi chìm xuống</b> (hoặc dùng chuột giữ nó dưới nước) để đọc toàn bộ thể tích.',
-    step4: 'Khối lượng riêng = khối lượng ÷ thể tích. Tìm số đó trong bảng.',
-    reset: 'Làm lại màn hình này', water: 'Nước',
-    triangle: 'Tam giác khối lượng riêng', triAria: 'Tam giác khối lượng riêng: m ở trên, D nhân V ở dưới', calc: 'Máy tính',
-    choose: 'Chọn…', check: 'Chấm bài', matFor: 'Vật liệu của khối {b}',
-    idStart: 'Chọn vật liệu cho một khối, rồi bấm Chấm bài.',
-    holdUnder: 'Giữ khối nổi chìm xuống', letFloat: 'Thả cho khối nổi',
-    floatsW: 'nổi', sinksW: 'chìm',
-    myData: 'Dữ liệu của em', colBlock: 'Khối', colSF: 'Chìm / Nổi',
-    measureT: 'Đo một khối', needAll: 'Hãy điền khối lượng, thể tích và khối lượng riêng.', doneCount: 'Đã xong: {n}/{t} khối', tryAgain: 'Thử lại',
-    mOkT: 'Đúng rồi! Em đã đo xong {b}.', mOkB: 'Khối lượng {m} g, thể tích {v} mL, khối lượng riêng {d} g/mL. Khớp với {mat} trong Bảng khối lượng riêng.',
-    mBadT: 'Hãy thử lại', mGood: '{q}: ✓ đúng',
-    massBad: '<b>Khối lượng:</b> đặt {b} lên cân và đọc số gam.',
-    volBad: '<b>Thể tích:</b> đọc mực nước khi {b} ở trong nước, rồi trừ 5000 mL. Nếu nó nổi, hãy giữ nó chìm hẳn dưới nước.',
-    denBadYours: '<b>Khối lượng riêng:</b> lấy khối lượng chia cho thể tích. Với số của em: {m} g ÷ {v} mL = {d} g/mL.',
-    denBad: '<b>Khối lượng riêng</b> = khối lượng ÷ thể tích.',
-    reveal: 'Đây là số đo đúng: khối lượng {m} g, thể tích {v} mL, khối lượng riêng {d} g/mL.',
-    pickFirstT: 'Hãy chọn vật liệu trước',
-    pickFirstB: 'Dùng menu bên cạnh <b>{b}</b> để chọn vật liệu, rồi bấm Chấm bài.',
-    mysMass: 'Khối lượng (trên cân) = {m} g',
-    mysVol: 'Thể tích: nước dâng từ 5000 mL lên {lv} mL → V = {v} mL',
-    mysFloat: 'Khối này <b>nổi</b> (khối lượng riêng của nó nhỏ hơn của nước, 1.00 g/mL). Khối nổi chỉ chiếm chỗ một phần thể tích của nó trong nước, nên em phải <b>giữ nó chìm hẳn</b> dưới nước để đọc toàn bộ thể tích.',
-    mysOkT: 'Đúng rồi! {b} là {mat}.',
-    mysOkB: '{d} g/mL khớp với {mat} ({md} g/mL) trong Bảng khối lượng riêng.',
-    mysOkS: 'Đúng rồi! {b} là {mat}. Khối lượng riêng bằng {m} gam chia cho {v} mi-li-lít, bằng {d} gam trên mi-li-lít.',
-    mysBadT: 'Chưa đúng. {b} là {mat}.',
-    mysYou: 'Em đã chọn {g} ({gd} g/mL).',
-    mysClosest: 'Giá trị gần nhất trong Bảng khối lượng riêng là <b>{mat}</b>, {md} g/mL.',
-    mysBadS: 'Chưa đúng. Em đã chọn {g}. {b} là {mat}. Khối lượng của nó là {m} gam. Thể tích của nó là {v} mi-li-lít. Khối lượng chia cho thể tích là {d} gam trên mi-li-lít, khớp với {mat}.',
-    testTitle: 'Tìm giá trị còn thiếu',
-    testSub: 'Em có 4 gợi ý. Hai gợi ý không giúp được. Dùng <b>đơn vị</b> để biết cái gì còn thiếu, rồi giải.',
-    yourAnswer: 'Đáp án của em', unit: 'Đơn vị', newProblem: 'Bài mới', nextProblem: 'Bài tiếp theo', ok: 'OK',
-    scCorrect: 'Đúng', scTried: 'Đã làm', scStreak: 'Chuỗi đúng',
-    readAloud: 'Đọc to', showHint: 'Hiện gợi ý đơn vị', hideHint: 'Ẩn gợi ý đơn vị',
-    widthNote: 'chiều rộng (không dùng để tính khối lượng riêng)', tempNote: 'nhiệt độ (không dùng để tính khối lượng riêng)',
-    needBoth: 'Hãy nhập một số và chọn đơn vị.',
-    notNeeded: '(không cần)', and: 'và', or: 'hoặc',
-    mlcmCancel: '(1 mL = 1 cm³, nên các đơn vị này triệt tiêu nhau.)',
-    sameThing: '(Giống nhau: {a} g/mL = {a} g/cm³.)', sameVol: '(Giống nhau: {a} mL = {a} cm³.)',
-    tOkT: 'Đúng rồi!',
-    tOkB: 'Giá trị còn thiếu là <b>{q}</b>. Em đã có {have}.',
-    tExtra: 'Chiều rộng và nhiệt độ là gợi ý thừa. Khối lượng riêng không dùng đến chúng.',
-    tOkS: 'Đúng rồi! Giá trị còn thiếu là {q}. {eq}',
-    tBadT: 'Chưa đúng',
-    tYour: 'Đáp án của em: {a}.',
-    numOkUnitBad: 'Số của em đúng, nhưng đơn vị sai.',
-    unitOkNumBad: 'Đơn vị của em đúng, nhưng con số chưa đúng.',
-    bothBad: 'Cả con số và đơn vị đều chưa đúng.',
-    step1T: '1. Phân loại gợi ý theo đơn vị:',
-    step2T: '<b>2. Còn thiếu gì?</b> Em có {have}, nên giá trị còn thiếu là <b>{q}</b> (đơn vị: {u}).',
-    step3T: '3. Giải:',
-    tBadS: 'Chưa đúng. Đáp án của em là {a}. {what} Em có {have}, nên giá trị còn thiếu là {q}. {eq} Chiều rộng và nhiệt độ không dùng để tính khối lượng riêng.',
-    clueSpeech: 'Đây là các gợi ý. {c} Có một giá trị còn thiếu. Dùng đơn vị để biết cái gì còn thiếu, rồi giải.',
-    sayDensity: 'Khối lượng riêng bằng khối lượng chia cho thể tích: {m} gam chia cho {v} {vu} bằng {d} {du}.',
-    sayVolume: 'Thể tích bằng khối lượng chia cho khối lượng riêng: {m} gam chia cho {d} {du} bằng {v} {vu}.',
-    sayMass: 'Khối lượng bằng khối lượng riêng nhân thể tích: {d} {du} nhân {v} {vu} bằng {m} gam.',
-    clear: 'Xóa', useResult: 'Dùng kết quả làm đáp án',
-    calcOps: 'Chỉ dùng số và + − × ÷', calcDiv0: 'Không thể chia cho 0', calcFinish: 'Hãy viết xong phép tính trước',
-    noVoice: 'Thiết bị này không có giọng đọc cho ngôn ngữ này.',
-    narrow: 'Mẹo: dùng tốt nhất trên Chromebook hoặc máy tính. Trên điện thoại, hãy xoay ngang hoặc kéo cảnh sang trái và phải.',
-    mat_styrofoam: 'Xốp', mat_wood: 'Gỗ (thông)', mat_ice: 'Nước đá', mat_brick: 'Gạch', mat_aluminum: 'Nhôm',
-    mat_diamond: 'Kim cương', mat_titanium: 'Titan', mat_steel: 'Thép', mat_copper: 'Đồng', mat_silver: 'Bạc',
-    mat_lead: 'Chì', mat_gold: 'Vàng',
-  },
+/* ---------- Species ---------- */
+const SP = {
+  barnacle: 'barnacles', limpet: 'limpets', periwinkle: 'periwinkle snails', mussel: 'mussels', seastar: 'sea stars', anemone: 'sea anemones',
+  poppy: 'poppies', dandelion: 'dandelions',
+  copepod: 'copepods', brineshrimp: 'brine shrimp', daphnia: 'Daphnia (water fleas)', volvox: 'Volvox colonies',
+  reeffish: 'reef fish', crab: 'shore crabs', turtle: 'green sea turtles', trout: 'rainbow trout'
 };
-
-// Current language (remembered in this browser). Falls back to English for any missing word.
-let lang = 'en';
-try { const s = localStorage.getItem('densityLab.lang'); if (LANG[s]) lang = s; } catch (e) {}
-function t(key, vars = {}) {
-  const s = LANG[lang][key] ?? LANG.en[key] ?? key;
-  return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
-}
-const matName = k => t('mat_' + k);
-const sayUnit = u => LANG[lang].say[u] || u;
-
-// ---------- Scene geometry (logical pixels; the scene is scaled to fit) ----------
-const W = 1000, H = 500;
-const GY = 230;              // ground line
-const PL = 300, PR = 700;    // pool left / right walls
-const PB = 470;              // pool floor
-const WATER0 = 5000;         // starting water volume (mL)
-const ML_PER_PX = WATER0 / 120;  // water starts 120 px deep
-const SCALE = { x1: 24, x2: 136, top: GY - 24 };   // kitchen scale (Mystery only)
-const FONT = '"Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, sans-serif';
-const RHO_WATER = 1.00;      // fresh water, g/mL
-
-// Block edge length on screen grows with the cube root of volume.
-const sideOf = V => 9 * Math.cbrt(V);
-
-// Typical densities at room temperature (names are in LANG as mat_...), g/cm³ (= g/mL).
-// Sources: CRC Handbook of Chemistry & Physics; Engineering ToolBox. Wood, brick, foam vary a lot by type.
-const MATS = {
-  styrofoam: { d: 0.05 },
-  wood:      { d: 0.50 },
-  ice:       { d: 0.92 },
-  brick:     { d: 2.00 },
-  aluminum:  { d: 2.70 },
-  diamond:   { d: 3.51 },
-  titanium:  { d: 4.51 },
-  steel:     { d: 7.85 },
-  copper:    { d: 8.96 },
-  silver:    { d: 10.49 },
-  lead:      { d: 11.34 },
-  gold:      { d: 19.32 },
+const HAB = {
+  shore: { name: 'rocky shore', bg: '#8b908c', blobs: ['#7a7f7b', '#9ba19c', '#6d726e'], species: ['barnacle', 'limpet', 'periwinkle', 'mussel', 'seastar', 'anemone'] },
+  meadow: { name: 'meadow', bg: '#7aa65b', blobs: ['#6b9a4e', '#8cb96a', '#5f8c45'], species: ['poppy', 'dandelion'] }
 };
+const WATERS = [
+  { name: 'seawater from a holding tank', short: 'flask', g: ['#dcf1f6', '#5fb0cb'], species: ['copepod', 'brineshrimp'] },
+  { name: 'seawater from a tide pool', short: 'flask', g: ['#cfe6ef', '#5b9fb5'], species: ['copepod', 'brineshrimp'] },
+  { name: 'water from a school pond', short: 'flask', g: ['#e0efd2', '#6aa886'], species: ['daphnia', 'volvox'] }
+];
+const PLACES = [
+  { sp: 'reeffish', name: 'a coral reef', g: ['#2f8fb8', '#0e4a73'], blobs: ['#e8806a', '#f2b705', '#b8e0d2'] },
+  { sp: 'crab', name: 'a mudflat', g: ['#cdbb93', '#a8946a'], blobs: ['#8f7d58', '#d9c9a3'] },
+  { sp: 'turtle', name: 'a coastal lagoon', g: ['#55bab4', '#1f7d86'], blobs: ['#8fd6c8', '#2e9a98'] },
+  { sp: 'trout', name: 'a mountain lake', g: ['#6aa3bd', '#2f6280'], blobs: ['#8dbfd4', '#3f7390'] }
+];
 
-// ---------- Small helpers ----------
-const $ = id => document.getElementById(id);
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-// Numbers always use a decimal POINT and no thousands commas, to match the calculator and answer box.
-const fmt = (n, dec = 1) => Number(n).toLocaleString('en-US', { maximumFractionDigits: dec, useGrouping: false });
-const fmtFixed = (n, dec) => Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: false });
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
-const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function store(key, val) { try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) { return null; } }
-
-// ---------- App state ----------
-const S = {
-  screen: 'home',
-  blocks: [],
-  show: { mass: true, vol: false, den: false },
-  intro: { mat: 'wood', m: 250, V: 500 },
-  compare: { mode: 'volume', val: { mass: 240, volume: 500, density: 0.5 } },   // 240 g gives whole-number volumes (150/600/200/300 mL)
-  mystery: { set: '1', sel: null, work: {} },
-  pushUnder: false,     // "Hold floaters under" button
-  teacher: false,       // teacher mode shows answer keys   // work[id] = { m, v, d, tries, done }
-};
-
-// =====================================================================
-//  BLOCKS + WATER PHYSICS
-// =====================================================================
-function makeBlock(id, label, color, m, V, extra = {}) {
-  return { id, label, color, m, V, x: 0, y: GY, loc: 'ground', held: false, settled: false, ...extra };
+function buildDefs() {
+  let d = '';
+  d += `<g id="o-barnacle"><circle r="8.5" fill="#ece8dc" stroke="#6f6a5c" stroke-width="1.2"/><circle r="4.2" fill="#3f3b33"/><circle r="1.6" fill="#ece8dc"/></g>`;
+  d += `<g id="o-limpet"><ellipse rx="9" ry="7" fill="#cdb98e" stroke="#6b5836" stroke-width="1.2"/><ellipse rx="5" ry="3.6" fill="#a8905f"/></g>`;
+  d += `<g id="o-periwinkle"><circle r="8" fill="#3a3550" stroke="#12101c" stroke-width="1"/><circle r="4.8" fill="none" stroke="#a9a3c9" stroke-width="1.2" stroke-dasharray="20 6"/><circle r="1.9" fill="#a9a3c9"/></g>`;
+  d += `<g id="o-mussel"><path d="M-9 2 Q-9 -6 2 -6 Q10 -5 9 1 Q8 6 -2 6 Q-8 6 -9 2Z" fill="#1d2d49" stroke="#0b1424" stroke-width="1"/><path d="M-7 1 Q0 -3 8 0" fill="none" stroke="#6f8cb8" stroke-width="1"/></g>`;
+  d += `<g id="o-seastar"><polygon points="${star(5, 10, 4.2)}" fill="#e8743b" stroke="#8a3a12" stroke-width="1"/><circle r="1.6" fill="#f6c28f"/></g>`;
+  d += `<g id="o-anemone">${[0,1,2,3,4,5,6,7].map(i => `<circle cx="${(6.2 * Math.cos(i * Math.PI / 4)).toFixed(2)}" cy="${(6.2 * Math.sin(i * Math.PI / 4)).toFixed(2)}" r="2.6" fill="#46c29a"/>`).join('')}<circle r="4.8" fill="#1d7f5f" stroke="#0e4a38" stroke-width="1"/></g>`;
+  d += `<g id="o-poppy"><circle cx="4.2" r="4.4" fill="#d93a2b"/><circle cx="-4.2" r="4.4" fill="#d93a2b"/><circle cy="4.2" r="4.4" fill="#d93a2b"/><circle cy="-4.2" r="4.4" fill="#d93a2b"/><circle r="2.4" fill="#2a1414"/></g>`;
+  d += `<g id="o-dandelion"><polygon points="${star(12, 9.5, 6)}" fill="#f6d31c" stroke="#b58a00" stroke-width=".8"/><circle r="3" fill="#d49a00"/></g>`;
+  d += `<g id="o-copepod"><ellipse rx="6" ry="3.2" fill="#f1dfa9" stroke="#6f5f2f" stroke-width=".9"/><path d="M5 -1 Q9 -4 10 -8 M5 1 Q9 4 10 8 M-6 0 L-10 -2.5 M-6 0 L-10 2.5" fill="none" stroke="#6f5f2f" stroke-width=".9" stroke-linecap="round"/><circle cx="3" cy="-.6" r=".8" fill="#222"/></g>`;
+  d += `<g id="o-brineshrimp"><path d="M-8 3 Q-6 -5 0 -3 Q6 -1 8 -6" fill="none" stroke="#f0a58c" stroke-width="3.4" stroke-linecap="round"/><circle cx="8" cy="-6" r="1.7" fill="#222"/></g>`;
+  d += `<g id="o-daphnia"><circle r="6.2" fill="#d6efb2" stroke="#4f6f2c" stroke-width="1"/><circle cx="-3" cy="-1" r="1.4" fill="#111"/><path d="M-6 -2 Q-10 -6 -9 -9.5" fill="none" stroke="#4f6f2c" stroke-width="1" stroke-linecap="round"/><path d="M6 1 L9.5 2.5" stroke="#4f6f2c" stroke-width="1" stroke-linecap="round"/></g>`;
+  d += `<g id="o-volvox"><circle r="7.4" fill="rgba(70,180,100,.55)" stroke="#1f7a3a" stroke-width="1.1"/>${[[-3,-3],[3,-2],[0,3],[-4,2],[4,3],[0,-5]].map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="1.3" fill="#1f7a3a"/>`).join('')}</g>`;
+  d += `<g id="o-reeffish"><ellipse cx="-1" rx="8" ry="5" fill="#ff9a3c" stroke="#a34a00" stroke-width="1"/><polygon points="6,0 10.5,-5 10.5,5" fill="#ff9a3c" stroke="#a34a00" stroke-width="1"/><path d="M-1 -4.6 V4.6" stroke="#fff" stroke-width="1.8"/><circle cx="-5" cy="-1.2" r="1" fill="#111"/></g>`;
+  d += `<g id="o-trout"><ellipse cx="-1" rx="8.4" ry="4.4" fill="#a7bb93" stroke="#4d6340" stroke-width="1"/><polygon points="6.5,0 10.5,-4.5 10.5,4.5" fill="#a7bb93" stroke="#4d6340" stroke-width="1"/><path d="M-5 .6 H6" stroke="#e07a7a" stroke-width="1.6"/><circle cx="-5.6" cy="-1" r="1" fill="#111"/><circle cx="0" cy="-2" r=".6" fill="#3b4a30"/><circle cx="3" cy="-1.6" r=".6" fill="#3b4a30"/></g>`;
+  d += `<g id="o-crab"><path d="M-7 -1 L-10.5 -4 M-7 2 L-10.5 5 M7 -1 L10.5 -4 M7 2 L10.5 5 M-6 4 L-8 7.5 M6 4 L8 7.5" stroke="#7d2113" stroke-width="1.2" fill="none" stroke-linecap="round"/><ellipse rx="7" ry="5" fill="#e0553b" stroke="#7d2113" stroke-width="1"/><circle cx="-5" cy="-6.2" r="2.6" fill="#e0553b" stroke="#7d2113" stroke-width="1"/><circle cx="5" cy="-6.2" r="2.6" fill="#e0553b" stroke="#7d2113" stroke-width="1"/><circle cx="-2" cy="-4.8" r=".9" fill="#111"/><circle cx="2" cy="-4.8" r=".9" fill="#111"/></g>`;
+  d += `<g id="o-turtle"><ellipse cx="-7.6" cy="-3" rx="3.8" ry="1.8" transform="rotate(-30 -7.6 -3)" fill="#8aa551" stroke="#2c4012" stroke-width=".8"/><ellipse cx="7.6" cy="-3" rx="3.8" ry="1.8" transform="rotate(30 7.6 -3)" fill="#8aa551" stroke="#2c4012" stroke-width=".8"/><ellipse cx="-6" cy="6" rx="2.8" ry="1.5" transform="rotate(40 -6 6)" fill="#8aa551" stroke="#2c4012" stroke-width=".8"/><ellipse cx="6" cy="6" rx="2.8" ry="1.5" transform="rotate(-40 6 6)" fill="#8aa551" stroke="#2c4012" stroke-width=".8"/><circle cy="-9" r="2.6" fill="#8aa551" stroke="#2c4012" stroke-width=".8"/><ellipse rx="7" ry="8" fill="#6d8f3a" stroke="#2c4012" stroke-width="1"/><path d="M-3 -3 L3 -3 L5 2 L0 5 L-5 2Z" fill="none" stroke="#2c4012" stroke-width=".8"/></g>`;
+  WATERS.forEach((w, i) => { d += `<linearGradient id="g-w${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${w.g[0]}"/><stop offset="1" stop-color="${w.g[1]}"/></linearGradient>`; });
+  PLACES.forEach((w, i) => { d += `<linearGradient id="g-p${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${w.g[0]}"/><stop offset="1" stop-color="${w.g[1]}"/></linearGradient>`; });
+  $('#defs').innerHTML = d;
 }
 
-// Volume of water a block pushes aside, given the current water surface y (wt).
-function displaced(b, wt) {
-  const s = sideOf(b.V), cx = b.x + s / 2;
-  const overPool = cx > PL && cx < PR;
-  if (!(b.loc === 'pool' || (b.held && overPool))) return 0;
-  // A block resting in the water: floaters push aside their own mass of water, sinkers their whole volume.
-  if (b.settled && !b.held) return S.pushUnder ? b.V : Math.min(b.m / RHO_WATER, b.V);   // held under = whole volume
-  const top = b.y - s;
-  const frac = clamp((b.y - Math.max(top, wt)) / s, 0, 1);
-  return frac * b.V;
-}
-
-// Water surface position. The level depends on the blocks and the blocks depend on the level,
-// so we repeat the calculation a few times until it settles.
-function water() {
-  let wt = PB - WATER0 / ML_PER_PX, total = 0;
-  for (let i = 0; i < 6; i++) {
-    total = S.blocks.reduce((sum, b) => sum + displaced(b, wt), 0);
-    wt = PB - (WATER0 + total) / ML_PER_PX;
+/* ---------- Level settings ---------- */
+const CFG = {
+  quad: {
+    easy:   { cols: 10, rows: 10, cell: 1, unit: 'm²', shapes: [[1,1]], k: [4,7], N: [250,500], step: 10, minCells: 4, minN: 8, lab: (w,h) => `${w} m × ${h} m`, leg: 'Each grid square is 1 m × 1 m (1 m²).' },
+    medium: { colsR: [11,14], rowsR: [9,12], cell: 1, unit: 'm²', shapes: [[1,1]], k: [5,8], dens: [3,6], minCells: 5, minN: 15, lab: (w,h) => `${w} m × ${h} m`, leg: 'Each grid square is 1 m × 1 m (1 m²).' },
+    hard:   { colsR: [14,18], rowsR: [11,14], cell: 1, unit: 'm²', shapes: [[1,1]], k: [6,10], dens: [2.5,5], minCells: 6, minN: 20, lab: (w,h) => `${w * 100} cm × ${h * 100} cm`, leg: 'Each grid square is 100 cm × 100 cm.', conv: true }
+  },
+  liquid: {
+    easy:   { unit: 'mL', Alist: [2000, 3000, 4000, 5000, 6000], k: [3, 5], vols: [50, 100, 150, 200], same: true, cmax: [10, 20], Nround: 10, minN: 25 },
+    medium: { unit: 'mL', Ar: [3000, 9000], Astep: 100, k: [4, 6], vols: [50, 75, 100, 125, 150, 200, 250], sizes: 3, minDistinct: 2, cmax: [10, 20], minN: 30 },
+    hard:   { unit: 'mL', Ar: [8000, 12000], Astep: 50, k: [6, 8], vols: [25, 40, 60, 75, 80, 120, 150, 180, 250, 300], sizes: 5, minDistinct: 3, cmax: [7, 14], minN: 40 }
+  },
+  mark: {
+    easy:   { Nlist: [300, 400, 500, 600], Mlist: [50], nlist: [50, 60], nets: 1, K: 70, em: [3.5, 12], minM: 3 },
+    medium: { N: [500, 1500], M: [60, 150], n: [60, 150], nets: 1, K: 90, em: [4, 12], minM: 3 },
+    hard:   { N: [1500, 5000], M: [100, 300], n: [40, 90], nets: 3, K: 110, em: [5, 15], minM: 4 }
   }
-  return { wt, level: WATER0 + total };
-}
+};
+const LEVEL_NOTE = {
+  quad:   { easy: 'Every quadrat is one square, 1 m × 1 m.', medium: 'Every quadrat is 1 m × 1 m. Bigger, less tidy habitat.', hard: 'Quadrat sizes are in cm, the total area is in m². Convert before you calculate.' },
+  liquid: { easy: 'Same-size tubes. Everything is in mL.', medium: 'Tubes come in a few sizes. Everything is in mL.', hard: 'Six to eight tubes in different sizes, and a big flask.' },
+  mark:   { easy: 'One recapture, round numbers.', medium: 'One recapture, less tidy numbers.', hard: 'Three nets, big population. Add the nets up first.' }
+};
 
-// Move every block that is not being held toward its resting spot.
-function stepPhysics() {
-  const { wt } = water();
-  for (const b of S.blocks) {
-    if (b.held) continue;
-    const s = sideOf(b.V), d = b.m / b.V;
-    let target;
-    if (b.loc === 'pool') {
-      if (d > RHO_WATER) target = PB;                                   // sinks to the floor
-      else if (S.pushUnder) target = Math.min(PB, wt + s + 4);          // pushed just under the surface
-      else target = Math.min(PB, wt + (d / RHO_WATER) * s);             // floats: this fraction is under water
+/* ---------- Geometry helpers ---------- */
+function scatter(N, x0, y0, x1, y1, dmin, reject) {
+  for (let pass = 0; pass < 6; pass++) {
+    const pts = [], grid = new Map(), cs = dmin;
+    let tries = 0; const maxTries = N * 500;
+    while (pts.length < N && tries < maxTries) {
+      tries++;
+      const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0);
+      if (reject && reject(x, y)) continue;
+      const gx = Math.floor((x - x0) / cs), gy = Math.floor((y - y0) / cs);
+      let ok = true;
+      for (let i = gx - 1; i <= gx + 1 && ok; i++) for (let j = gy - 1; j <= gy + 1 && ok; j++) {
+        const arr = grid.get(i + ',' + j); if (!arr) continue;
+        for (const q of arr) if ((q.x - x) ** 2 + (q.y - y) ** 2 < dmin * dmin) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const p = { x, y }; pts.push(p);
+      const key = gx + ',' + gy; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(p);
     }
-    else if (b.loc === 'scale') target = SCALE.top;
-    else target = GY;
-    const diff = target - b.y;
-    if (Math.abs(diff) < 0.3) { b.y = target; b.settled = true; }
-    else { b.settled = false; b.y += diff * (b.loc === 'pool' ? 0.08 : 0.22); }
+    if (pts.length >= N) return pts;
+    dmin *= 0.9;
   }
+  return null;
 }
+const overlap = (a, b, g) => a.x < b.x + b.w + g && b.x < a.x + a.w + g && a.y < b.y + b.h + g && b.y < a.y + a.h + g;
 
-// Find the nearest x (to b.x) inside [lo, hi] where block b doesn't overlap the given intervals.
-function freeX(b, lo, hi, taken) {
-  const s = sideOf(b.V);
-  if (hi < lo) return null;
-  const cands = [clamp(b.x, lo, hi), lo, hi];
-  for (const [l, r] of taken) cands.push(l - s - 3, r + 3);
-  const ok = x => x >= lo - 0.01 && x <= hi + 0.01 && taken.every(([l, r]) => x + s <= l || x >= r);
-  let best = null;
-  for (const x of cands) if (ok(x) && (best === null || Math.abs(x - b.x) < Math.abs(best - b.x))) best = x;
-  return best;
-}
-const spans = (b, which) => S.blocks.filter(o => o !== b && !o.held && which(o)).map(o => [o.x, o.x + sideOf(o.V)]);
-function groundTaken(b) {
-  const t = spans(b, o => o.loc === 'ground');
-  if (S.screen === 'mystery') t.push([SCALE.x1 - 4, SCALE.x2 + 4]);
-  return t;
-}
-
-// Decide where a dropped block lands: on the scale, in the pool, or on the ground.
-function placeBlock(b) {
-  const s = sideOf(b.V), cx = b.x + s / 2;
-  if (S.screen === 'mystery' && cx > SCALE.x1 - 12 && cx < SCALE.x2 + 12 && !S.blocks.some(o => o !== b && o.loc === 'scale')) {
-    b.x = (SCALE.x1 + SCALE.x2) / 2 - s / 2; b.loc = 'scale'; return;
+function layout(cfg) {
+  const cap = Math.floor(cfg.cols * cfg.rows * 0.10);
+  let last = [];
+  for (let attempt = 0; attempt < 600; attempt++) {
+    const k = ri(cfg.k[0], cfg.k[1]);
+    const placed = []; let cells = 0, ok = true;
+    for (let i = 0; i < k; i++) {
+      let done = false;
+      for (let t = 0; t < 80 && !done; t++) {
+        const s = pick(cfg.shapes);
+        let w = s[0], h = s[1];
+        if (w !== h && rnd() < 0.5) { const tmp = w; w = h; h = tmp; }
+        if (cells + w * h > cap) continue;
+        const r = { x: ri(0, cfg.cols - w), y: ri(0, cfg.rows - h), w, h };
+        if (placed.some(p => overlap(p, r, 1))) continue;
+        placed.push(r); cells += w * h; done = true;
+      }
+      if (!done) { ok = false; break; }
+    }
+    last = placed;
+    if (ok && cells >= cfg.minCells) { placed.sort((a, b) => a.y - b.y || a.x - b.x); return placed; }
   }
-  if (cx > PL && cx < PR) {
-    const x = freeX(b, PL + 3, PR - 3 - s, spans(b, o => o.loc === 'pool'));
-    if (x !== null) { b.x = x; b.loc = 'pool'; return; }
+  last.sort((a, b) => a.y - b.y || a.x - b.x);
+  return last;
+}
+
+function blobSVG(cols, rows, colors, count, rmin, rmax) {
+  let s = '';
+  for (let i = 0; i < count; i++) {
+    s += `<ellipse cx="${(rnd() * cols).toFixed(2)}" cy="${(rnd() * rows).toFixed(2)}" rx="${(rmin + rnd() * (rmax - rmin)).toFixed(2)}" ry="${(rmin + rnd() * (rmax - rmin)).toFixed(2)}" transform="rotate(${ri(0, 180)} ${(rnd() * cols).toFixed(1)} ${(rnd() * rows).toFixed(1)})" fill="${pick(colors)}" opacity=".5"/>`;
   }
-  const left = [6, PL - 6 - s], right = [PR + 6, W - 14 - s];
-  const zones = cx <= W / 2 ? [left, right] : [right, left];
-  for (const [lo, hi] of zones) {
-    const x = freeX(b, lo, hi, groundTaken(b));
-    if (x !== null) { b.x = x; b.loc = 'ground'; if (b.y > GY) b.y = GY; return; }
+  return s;
+}
+
+/* ---------- State ---------- */
+const state = { mode: 'quad', level: 'easy', prob: null };
+
+/* ---------- Edge organisms: rare, deliberate ---------- */
+const RB = 0.155; // body radius used to detect organisms touching a frame edge
+function edgeProcess(orgs, rects) {
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const strad = [];
+  orgs.forEach(o => rects.forEach((r, ri_) => {
+    const cx = clamp(o.x, r.x, r.x + r.w), cy = clamp(o.y, r.y, r.y + r.h);
+    const inside = cx === o.x && cy === o.y;
+    const d = inside ? Math.min(o.x - r.x, r.x + r.w - o.x, o.y - r.y, r.y + r.h - o.y) : Math.hypot(o.x - cx, o.y - cy);
+    if (d < RB) {
+      const ds = [o.x - r.x, r.x + r.w - o.x, o.y - r.y, r.y + r.h - o.y].sort((u, v) => u - v);
+      strad.push({ o, r, ri: ri_, inside, cx, cy, canKeep: !inside || ds[1] >= RB }); // inside + near a corner could be under half in, so never keep those
+    }
+  }));
+  shuffle(strad);
+  const E = rnd() < 0.6 ? 0 : rnd() < 0.75 ? 1 : 2; // mostly 0; about 30% of problems get 1, 10% get 2
+  let kept = 0;
+  strad.forEach(t => {
+    const o = t.o, r = t.r;
+    if (kept < E && t.canKeep) { kept++; o.edge = t.inside ? 'in' : 'out'; o.er = t.ri; return; }
+    const m = RB + 0.02 + rnd() * 0.08; // push clear of the edge, keeping it on the same side
+    if (t.inside) {
+      o.x = Math.max(r.x + m, Math.min(r.x + r.w - m, o.x));
+      o.y = Math.max(r.y + m, Math.min(r.y + r.h - m, o.y));
+    } else {
+      const vx = o.x - t.cx, vy = o.y - t.cy, L = Math.hypot(vx, vy) || 1;
+      o.x = t.cx + vx / L * m; o.y = t.cy + vy / L * m;
+    }
+  });
+}
+
+/* ---------- Problem builders (quadrats + liquids) ---------- */
+function buildGrid() {
+  const base = CFG[state.mode][state.level];
+  const cfg = { ...base, cols: base.cols || ri(base.colsR[0], base.colsR[1]), rows: base.rows || ri(base.rowsR[0], base.rowsR[1]) };
+  const isQ = state.mode === 'quad';
+  let hab, spKey, waterIdx = -1;
+  if (isQ) { const key = rnd() < 0.75 ? 'shore' : 'meadow'; hab = HAB[key]; spKey = pick(hab.species); }
+  else { waterIdx = ri(0, WATERS.length - 1); hab = WATERS[waterIdx]; spKey = pick(hab.species); }
+  const A = rd(cfg.cols * cfg.rows * cfg.cell);
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const rects = layout(cfg);
+    let N = cfg.dens ? Math.round(cfg.cols * cfg.rows * (cfg.dens[0] + rnd() * (cfg.dens[1] - cfg.dens[0]))) : ri(cfg.N[0], cfg.N[1]);
+    if (cfg.step > 1) N = Math.round(N / cfg.step) * cfg.step;
+    const R = RB;
+    const pts = scatter(N, R, R, cfg.cols - R, cfg.rows - R, 0.28, null);
+    if (!pts) continue;
+    const orgs = pts.map(p => ({ x: p.x, y: p.y, rot: ri(0, 359), s: (0.0135 * (0.92 + rnd() * 0.2)), sp: spKey }));
+    edgeProcess(orgs, rects);
+    const counts = rects.map(r => orgs.filter(o => o.x >= r.x && o.x < r.x + r.w && o.y >= r.y && o.y < r.y + r.h).length);
+    const edges = rects.map((_, i) => ({ in: orgs.filter(o => o.edge === 'in' && o.er === i).length, out: orgs.filter(o => o.edge === 'out' && o.er === i).length }));
+    const n = sum(counts);
+    if (n < cfg.minN) continue;
+    const areas = rects.map(r => rd(r.w * r.h * cfg.cell));
+    const a = rd(sum(areas));
+    const bg = isQ
+      ? `<rect width="${cfg.cols}" height="${cfg.rows}" fill="${hab.bg}"/>${blobSVG(cfg.cols, cfg.rows, hab.blobs, Math.round(cfg.cols * cfg.rows * 0.22), 0.4, 1.4)}`
+      : `<rect width="${cfg.cols}" height="${cfg.rows}" fill="url(#g-w${waterIdx})"/>${Array.from({ length: Math.round(cfg.cols * cfg.rows * 0.18) }, () => `<circle cx="${(rnd() * cfg.cols).toFixed(2)}" cy="${(rnd() * cfg.rows).toFixed(2)}" r="${(0.05 + rnd() * 0.14).toFixed(2)}" fill="#fff" opacity=".22"/>`).join('')}`;
+    return { kind: 'grid', cfg, hab, spKey, pl: SP[spKey], A, rects, orgs, counts, edges, n, areas, a, N, bg, k: rects.length, checked: false };
   }
-  b.loc = 'ground'; b.y = Math.min(b.y, GY);   // nowhere free: leave it where it is
+  return null;
 }
 
-// Line blocks up on the ground: `leftIds` end just left of the pool, the rest start right of the pool.
-function layoutHomes(list, leftIds) {
-  let cur = PL - 12;
-  const minLeft = S.screen === 'mystery' ? SCALE.x2 + 10 : 6;
-  for (const b of list.filter(b => leftIds.includes(b.id)).reverse()) {
-    const s = sideOf(b.V); b.x = Math.max(minLeft, cur - s); cur = b.x - 8; b.loc = 'ground'; b.y = GY;
+/* ---------- Liquid: a flask of water, sampled into test tubes (all mL) ---------- */
+const binom = (n, pr) => { let c = 0; for (let i = 0; i < n; i++) if (rnd() < pr) c++; return c; };
+const FLASK = 'M70,10 H130 V90 L188,200 Q196,232 168,236 H32 Q4,232 12,200 L70,90 Z';
+const tubeFill = (v, vmax) => 40 + 150 * v / vmax;
+
+function buildLiquid() {
+  const cfg = CFG.liquid[state.level];
+  const wi = ri(0, WATERS.length - 1), water = WATERS[wi], spKey = pick(water.species);
+  for (let attempt = 0; attempt < 500; attempt++) {
+    let A = cfg.Alist ? pick(cfg.Alist) : Math.round(ri(cfg.Ar[0], cfg.Ar[1]) / cfg.Astep) * cfg.Astep;
+    A = Math.min(A, 12000);
+    const cap = Math.floor(A * 0.10), k = ri(cfg.k[0], cfg.k[1]);
+    let vs;
+    if (cfg.same) { const v = pick(cfg.vols); vs = Array(k).fill(v); }
+    else { const set = shuffle(cfg.vols.slice()).slice(0, cfg.sizes); vs = Array.from({ length: k }, () => pick(set)); if (new Set(vs).size < cfg.minDistinct) continue; }
+    const a = sum(vs);
+    if (a > cap || a < A * 0.04) continue;
+    const vmax = Math.max(...vs);
+    let N = Math.round(ri(cfg.cmax[0], cfg.cmax[1]) * A / vmax);
+    if (cfg.Nround) N = Math.round(N / cfg.Nround) * cfg.Nround;
+    let R = N, V = A;
+    const counts = vs.map(v => { const c = binom(R, v / V); R -= c; V -= v; return c; });
+    const n = sum(counts);
+    if (n < cfg.minN) continue;
+    const tubes = []; let ok = true;
+    for (let i = 0; i < k; i++) {
+      const yf = 205 - tubeFill(vs[i], vmax);
+      const pts = scatter(counts[i], 12, yf + 8, 68, 200, 13.5, (x, y) => y > 170 && (x - 40) ** 2 + (y - 170) ** 2 > 28 ** 2);
+      if (!pts) { ok = false; break; }
+      tubes.push({ v: vs[i], yf, count: counts[i], orgs: pts.map(q => ({ x: q.x, y: q.y, rot: ri(0, 359), s: 0.6 * (0.92 + rnd() * 0.2), sp: spKey })) });
+    }
+    if (!ok) continue;
+    const fp = scatter(28, 24, 135, 176, 226, 15, (x, y) => { const l = y <= 200 ? 70 - 58 * (y - 90) / 110 : 12; return x < l + 11 || x > 200 - l - 11; }) || [];
+    const flask = fp.map(q => ({ x: q.x, y: q.y, rot: ri(0, 359), s: 0.6 * (0.92 + rnd() * 0.2), sp: spKey }));
+    return { kind: 'liquid', cfg, water, wi, spKey, pl: SP[spKey], A, a, N, n, counts, k, tubes, vmax, flask, checked: false };
   }
-  cur = PR + 12;
-  for (const b of list.filter(b => !leftIds.includes(b.id))) {
-    const s = sideOf(b.V); b.x = Math.min(W - 14 - s, cur); cur = b.x + s + 8; b.loc = 'ground'; b.y = GY;
+  return null;
+}
+
+function tubeG(t, wi) {
+  return `<g><path d="M5,${t.yf.toFixed(1)} H75 V170 A35,35 0 0 1 5,170 Z" fill="url(#g-w${wi})"/>${t.orgs.map(useTag).join('')}<path d="M0,0 V170 A40,40 0 0 0 80,170 V0" fill="none" stroke="#5b7a85" stroke-width="3" stroke-linecap="round"/><path d="M9,12 V160" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/></g>`;
+}
+
+function sceneLiquid(p) {
+  let s = `<svg class="scene" viewBox="0 0 640 345" role="img" aria-label="A flask holding ${p.A} mL of water and ${p.k} test tubes with samples. Zoomed tubes are in the worksheet.">`;
+  s += `<rect width="640" height="345" fill="#eef3f0"/><rect y="300" width="640" height="45" fill="#cdd7d2"/><rect y="300" width="640" height="3" fill="#aebbb5"/>`;
+  s += `<g transform="translate(12,32)"><clipPath id="flaskclip"><path d="${FLASK}"/></clipPath>`;
+  s += `<rect x="0" y="125" width="200" height="125" fill="url(#g-w${p.wi})" clip-path="url(#flaskclip)"/>${p.flask.map(useTag).join('')}`;
+  s += `<path d="${FLASK}" fill="rgba(255,255,255,.18)" stroke="#5b7a85" stroke-width="3.5" stroke-linejoin="round"/><path d="M62,10 H138" stroke="#5b7a85" stroke-width="5" stroke-linecap="round"/><path d="M130,38 h-12 M130,52 h-7 M130,66 h-12" stroke="#5b7a85" stroke-width="2"/>`;
+  s += `<text x="100" y="268" text-anchor="middle" font-size="20" font-weight="700" fill="#14282a" font-family="system-ui, sans-serif">A = ${p.A} mL</text></g>`;
+  s += `<path d="M222 205 H250 M243 198 L252 205 L243 212" stroke="#14282a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="232" y="190" text-anchor="middle" font-size="11" fill="#14282a" font-family="system-ui, sans-serif">samples</text>`;
+  const slot = 372 / p.k, sc = Math.min(1, (slot - 6) / 80);
+  p.tubes.forEach((t, i) => {
+    const tx = 264 + i * slot + (slot - 80 * sc) / 2, ty = 300 - 214 * sc, cx = tx + 40 * sc;
+    s += `<g transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${sc.toFixed(3)})">${tubeG(t, p.wi)}</g>`;
+    s += `<text x="${cx.toFixed(1)}" y="318" text-anchor="middle" font-size="13" font-weight="700" fill="#14282a" font-family="system-ui, sans-serif">T${i + 1}</text><text x="${cx.toFixed(1)}" y="334" text-anchor="middle" font-size="12" fill="#14282a" font-family="system-ui, sans-serif">${t.v} mL</text>`;
+  });
+  return s + '</svg>';
+}
+
+function storyLiquid(p) {
+  return `<p>A flask holds <b>${p.A} mL</b> of ${p.water.name}, mixed well. ${p.k} test tubes were filled from it, and together they hold no more than 10% of the water.</p>
+    <p>Each test tube shows how many ${esc(p.pl)} were counted in it. Add the counts, then estimate how many are in the whole flask.</p>`;
+}
+
+function liquidWork(p) {
+  const panels = p.tubes.map((t, i) => `
+    <div class="panel">
+      <div class="pname"><b>T${i + 1}</b><span>${t.v} mL</span></div>
+      <svg class="pv tv" viewBox="0 0 80 214" role="img" aria-label="Test tube T${i + 1}, ${t.v} mL">${tubeG(t, p.wi)}</svg>
+      <div class="pcount">Count: <b>${t.count}</b></div>
+    </div>`).join('');
+  return `
+  <div class="card">
+    <h2>Step 1: Read the counts</h2>
+    <p class="hint">Each test tube shows how many ${esc(p.pl)} were counted in it. Add the counts up to get n.</p>
+    <div class="panels tubes">${panels}</div>
+  </div>
+  <div class="card">
+    <h2>Step 2: Calculate</h2>
+    ${ruleHTML()}
+    ${calcHTML()}
+    <div class="calc">
+      <div class="given"><span>A = total volume in the flask (given)</span><b>${p.A} mL</b></div>
+      <div class="row"><label for="fa">a = total volume sampled<small>Add up all the test tubes. Unit: mL</small></label><input class="num" id="fa" inputmode="decimal" autocomplete="off"><div class="fb" id="ffa"></div></div>
+      <div class="row"><label for="fn">n = total number counted<small>Add the counts from every test tube</small></label><input class="num" id="fn" inputmode="numeric" autocomplete="off"><div class="fb" id="ffn"></div></div>
+      <div class="row"><label for="fN">N = (A / a) × n<small>Round to 1 decimal place, like 245.0</small></label><input class="num" id="fN" inputmode="decimal" autocomplete="off"><div class="fb" id="ffN"></div></div>
+    </div>
+    <p class="msg" id="msg" role="alert"></p>
+    <div class="actions"><button type="button" class="btn primary" id="checkBtn">Check my work</button></div>
+  </div>
+  <div id="after"></div>`;
+}
+
+function lessonLiquid(p, Ncorr, err) {
+  const ratio = p.A / p.a;
+  let steps = '';
+  steps += `<li><b>Read each test tube's count.</b> ${p.counts.map((c, i) => `T${i + 1} = ${c}`).join(', ')}.</li>`;
+  steps += `<li><b>Add the counts.</b> <span class="calc-line">n = ${p.counts.join(' + ')} = ${p.n}</span></li>`;
+  steps += `<li><b>Add the volume sampled.</b> <span class="calc-line">a = ${p.tubes.map(t => t.v).join(' + ')} = ${p.a} mL</span></li>`;
+  steps += `<li><b>Scale up.</b> <span class="calc-line">A ÷ a = ${p.A} ÷ ${p.a} ${Math.abs(ratio - Math.round(ratio * 1000) / 1000) > 1e-9 ? '≈' : '='} ${trim(ratio, 3)}</span>. The flask holds about ${trim(ratio, 1)} times more water than you sampled.</li>`;
+  steps += `<li><b>Multiply by n.</b> <span class="calc-line">N = (${p.A} ÷ ${p.a}) × ${p.n} = ${f1(Ncorr)}</span>. Keep the full calculator number and round only the final answer to 1 decimal place.</li>`;
+  return `<div class="card lesson">
+    <h2>How to get the correct answer</h2>
+    <ol>${steps}</ol>
+    <p class="why">${err < 5 ? 'Very close' : err < 15 ? 'Close' : 'Noticeably off'}: the estimate is ${trim(err, 1)}% from the real ${p.N}. It isn't exact because the tubes caught a few more or fewer organisms than average. Sampling a larger share of the water usually gets you closer.</p>
+    <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="nextBtn">Next problem</button></div>
+  </div>`;
+}
+
+function ruleHTML() {
+  return `<div class="rule"><b>Rounding rule:</b> round your final answer N to <b>1 decimal place</b> (like 245.0). Keep the full number in your calculator and round only at the very end.</div>`;
+}
+
+function storyGrid(p) {
+  const { cfg, pl, A, k } = p;
+  if (state.mode === 'quad') {
+    return `<p>${cap1(p.hab.name === 'meadow' ? 'a meadow' : 'a rocky shore')} covers <b>${fmtN(A)} m²</b>. ${k} quadrats were placed at random spots, and together they never cover more than 10% of it.</p>
+      <p>Each quadrat shows how many ${esc(pl)} were counted in it. Add the counts, then estimate how many live on the whole ${p.hab.name}.${cfg.conv ? ' Quadrat sizes are in cm and A is in m², so convert before you calculate.' : ''}</p>`;
   }
+  return `<p>${cap1(p.hab.name)} holds <b>${fmtN(A)} L</b> of water. ${k} dips were taken from random spots, and together they never take more than 10% of the water.</p>
+    <p>Count the ${esc(pl)} in each dip, then estimate how many are in the whole ${p.hab.short}.${cfg.conv ? ' Dip sizes are in mL and A is in L, so convert before you calculate.' : ''}</p>`;
 }
 
-// After a slider changes block sizes, keep pool blocks where they are (nudging if they overlap)
-// and send ground blocks back to their starting spots.
-function refit(leftIds) {
-  layoutHomes(S.blocks.filter(b => b.loc === 'ground' && !b.held), leftIds);
-  for (const b of S.blocks) if (b.loc === 'pool' && !b.held) placeBlock(b);
-  for (const b of S.blocks) b.settled = false;
+const useTag = o => `<use class="o" href="#o-${o.sp}" transform="translate(${o.x.toFixed(3)} ${o.y.toFixed(3)}) rotate(${o.rot}) scale(${o.s.toFixed(4)})"/>`;
+const ringTag = o => `<circle cx="${o.x.toFixed(3)}" cy="${o.y.toFixed(3)}" r=".22" fill="none" stroke="#e0218a" stroke-width=".05" pointer-events="none"/>`;
+const pre = () => state.mode === 'quad' ? 'Q' : 'D';
+
+function sceneGrid(p) {
+  const { cols, rows } = p.cfg;
+  let s = `<svg class="scene" viewBox="0 0 ${cols} ${rows}" role="img" aria-label="Habitat with ${p.k} sample frames. Zoomed views are in the worksheet.">`;
+  s += p.bg;
+  let g = ''; for (let i = 1; i < cols; i++) g += `M${i} 0V${rows}`; for (let j = 1; j < rows; j++) g += `M0 ${j}H${cols}`;
+  s += `<path d="${g}" stroke="#fff" stroke-opacity=".28" stroke-width=".02" fill="none"/>`;
+  s += p.orgs.map(useTag).join('');
+  s += p.orgs.filter(o => o.edge === 'in').map(ringTag).join('');
+  p.rects.forEach((r, i) => {
+    s += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="#ffc400" fill-opacity=".10" stroke="#ffc400" stroke-width=".08"/>`;
+    const ly = r.y >= 0.5 ? r.y - 0.5 : r.y + r.h;
+    s += `<rect x="${r.x}" y="${ly}" width=".78" height=".5" rx=".08" fill="#14282a" opacity=".9"/><text x="${r.x + 0.39}" y="${ly + 0.36}" font-size=".34" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui, sans-serif">${pre()}${i + 1}</text>`;
+  });
+  return s + '</svg>';
 }
 
-// =====================================================================
-//  DRAWING
-// =====================================================================
-const canvas = $('scene'), ctx = canvas.getContext('2d');
-let viewScale = 1;
-
-function rr(x, y, w, h, r) {
-  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
-function tag(text, x, y, { bold = false, size = 15, bg = '#fff', fg = '#111', pad = 5 } = {}) {
-  ctx.font = `${bold ? 700 : 400} ${size}px ${FONT}`;
-  const w = ctx.measureText(text).width + pad * 2, h = size + 8;
-  rr(x, y, w, h, 4); ctx.fillStyle = bg; ctx.fill(); ctx.strokeStyle = '#444'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.fillText(text, x + pad, y + h / 2 + 1);
-  return { w, h };
-}
-function shade(hex, amt) {   // lighten (amt>0) or darken (amt<0) a #rrggbb colour
-  const n = parseInt(hex.slice(1), 16);
-  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
-  const f = v => clamp(Math.round(amt > 0 ? v + (255 - v) * amt : v * (1 + amt)), 0, 255);
-  return `rgb(${f(r)},${f(g)},${f(b)})`;
+function panelSVG(p, r, i) {
+  const near = p.orgs.filter(o => o.x > r.x - RB && o.x < r.x + r.w + RB && o.y > r.y - RB && o.y < r.y + r.h + RB);
+  const rings = near.filter(o => o.edge === 'in' && o.er === i).map(ringTag).join('');
+  return `<svg class="pv" viewBox="${r.x} ${r.y} ${r.w} ${r.h}" role="img" aria-label="Zoomed view of ${pre()}${i + 1}">${p.bg}${near.map(useTag).join('')}${rings}</svg>`;
 }
 
-function drawBackground() {
-  let g = ctx.createLinearGradient(0, 0, 0, GY - 70);
-  g.addColorStop(0, '#f7a072'); g.addColorStop(1, '#fde4c3');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, GY - 70);
-  g = ctx.createLinearGradient(0, GY - 70, 0, GY - 30);      // sea on the horizon
-  g.addColorStop(0, '#3a8fa0'); g.addColorStop(1, '#2a6f80');
-  ctx.fillStyle = g; ctx.fillRect(0, GY - 70, W, 40);
-  ctx.fillStyle = '#d9bf8c'; ctx.fillRect(0, GY - 30, W, 30);  // beach
-  ctx.fillStyle = '#cfa96e'; ctx.fillRect(0, GY, W, H - GY);   // sand bench
-  // pool: back wall, side walls, floor
-  ctx.fillStyle = '#c6e3e1'; ctx.fillRect(PL, GY - 10, PR - PL, PB - GY + 10);
-  ctx.fillStyle = '#5f8f94'; ctx.fillRect(PL - 6, GY - 10, 6, PB - GY + 10); ctx.fillRect(PR, GY - 10, 6, PB - GY + 10);
-  ctx.fillStyle = '#a98d63'; ctx.fillRect(PL, PB - 14, PR - PL, 14);
+function edgeNote(p, i) {
+  const e = p.edges[i]; if (!e.in && !e.out) return '';
+  const parts = [];
+  if (e.in) parts.push(`${e.in} pink-ringed ${e.in > 1 ? 'organisms are' : 'organism is'} at least half inside, so ${e.in > 1 ? 'they are' : 'it is'} in the count.`);
+  if (e.out) parts.push(`${e.out} cut-off ${e.out > 1 ? 'organisms are' : 'organism is'} less than half inside, so ${e.out > 1 ? 'they are' : 'it is'} not in the count.`);
+  return `<p class="pedge">Edge: ${parts.join(' ')}</p>`;
+}
+function gridWork(p) {
+  const thing = state.mode === 'quad' ? 'quadrat' : 'dip';
+  const aWord = state.mode === 'quad' ? 'area' : 'volume';
+  const panels = p.rects.map((r, i) => `
+    <div class="panel">
+      <div class="pname"><b>${pre()}${i + 1}</b><span>${p.cfg.lab(r.w, r.h)}</span></div>
+      ${panelSVG(p, r, i)}
+      <div class="pcount">Count: <b>${p.counts[i]}</b></div>
+      ${edgeNote(p, i)}
+    </div>`).join('');
+  return `
+  <div class="card">
+    <h2>Step 1: Read the counts</h2>
+    <p class="hint">Each ${thing} shows how many ${esc(p.pl)} were counted in it. Add the counts up to get n. Edge rule used: an organism at least half inside the frame is counted (pink ring). Less than half is not.</p>
+    <div class="panels" id="panels">${panels}</div>
+  </div>
+  <div class="card">
+    <h2>Step 2: Calculate</h2>
+    ${ruleHTML()}
+    ${calcHTML()}
+    <div class="calc">
+      <div class="given"><span>A = total ${aWord} (given)</span><b>${fmtN(p.A)} ${p.cfg.unit}</b></div>
+      <div class="row"><label for="fa">a = total ${aWord} sampled<small>Add up all the ${thing}s. Unit: ${p.cfg.unit}</small></label><input class="num" id="fa" inputmode="decimal" autocomplete="off"><div class="fb" id="ffa"></div></div>
+      <div class="row"><label for="fn">n = total number counted<small>Add the counts from every ${thing}</small></label><input class="num" id="fn" inputmode="numeric" autocomplete="off"><div class="fb" id="ffn"></div></div>
+      <div class="row"><label for="fN">N = (A / a) × n<small>Round to 1 decimal place, like 245.0</small></label><input class="num" id="fN" inputmode="decimal" autocomplete="off"><div class="fb" id="ffN"></div></div>
+    </div>
+    <p class="msg" id="msg" role="alert"></p>
+    <div class="actions"><button type="button" class="btn primary" id="checkBtn">Check my work</button></div>
+  </div>
+  <div id="after"></div>`;
 }
 
-function drawScale() {
-  const { x1, x2, top } = SCALE;
-  ctx.fillStyle = '#c9ced3'; ctx.fillRect(x1, top + 6, x2 - x1, GY - top - 6);
-  ctx.fillStyle = '#e9ecef'; rr(x1 + 6, top, x2 - x1 - 12, 7, 3); ctx.fill();
-  ctx.fillStyle = '#9aa1a8'; ctx.fillRect(x2, top + 6, 6, GY - top - 6);
-  const on = S.blocks.find(b => b.loc === 'scale' && b.settled);
-  const txt = (on ? fmtFixed(on.m, 1) : '0.0') + ' g';
-  ctx.font = `700 15px ${FONT}`;
-  const w = ctx.measureText(txt).width + 12;
-  rr((x1 + x2) / 2 - w / 2, top + 9, w, 18, 3); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#555'; ctx.stroke();
-  ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(txt, (x1 + x2) / 2 - w / 2 + 6, top + 19);
+/* ---------- Checking (quadrats + liquids) ---------- */
+function setField(inp, fbId, ok, html) {
+  inp.classList.remove('good', 'bad'); inp.classList.add(ok ? 'good' : 'bad');
+  const fb = $('#' + fbId); fb.className = 'fb ' + (ok ? 'good' : 'bad'); fb.innerHTML = html;
 }
+function lockInputs() { document.querySelectorAll('#work input').forEach(i => { i.readOnly = true; }); }
 
-function drawBlockBody(b) {
-  const s = sideOf(b.V), x = b.x, y = b.y, d = Math.max(5, s * 0.1);
-  ctx.fillStyle = shade(b.color, 0.25);    // top face
-  ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + d, y - s - d); ctx.lineTo(x + s + d, y - s - d); ctx.lineTo(x + s, y - s); ctx.fill();
-  ctx.fillStyle = shade(b.color, -0.3);    // right face
-  ctx.beginPath(); ctx.moveTo(x + s, y - s); ctx.lineTo(x + s + d, y - s - d); ctx.lineTo(x + s + d, y - d); ctx.lineTo(x + s, y); ctx.fill();
-  ctx.fillStyle = b.color; ctx.fillRect(x, y - s, s, s);
-  if (b.held) { ctx.strokeStyle = '#ff7a59'; ctx.lineWidth = 3; ctx.strokeRect(x - 1, y - s - 1, s + 2, s + 2); }
-  else if (S.screen === 'mystery' && b.id === S.mystery.sel) {   // the block being measured
-    ctx.strokeStyle = '#ff7a59'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
-    ctx.strokeRect(x - 4, y - s - d - 4, s + d + 8, s + d + 8); ctx.setLineDash([]);
+function checkGrid() {
+  const p = state.prob; if (p.checked) return;
+  const ids = ['fa', 'fn', 'fN'];
+  const vals = ids.map(id => parseNum($('#' + id).value));
+  const bad = ids.findIndex((id, i) => Number.isNaN(vals[i]) || (id === 'fn' && (!Number.isInteger(vals[i]) || vals[i] < 0)));
+  if (bad >= 0) {
+    $('#msg').textContent = Number.isNaN(vals[bad]) ? 'Fill in every box with a number first.' : 'n must be a whole number.';
+    $('#' + ids[bad]).focus(); return;
   }
+  $('#msg').textContent = '';
+  p.checked = true;
+  const [a, n, Nv] = vals;
+  let score = 0; const total = 3, unit = p.cfg.unit;
+  const aOk = Math.abs(a - p.a) < 0.0501; if (aOk) score++;
+  setField($('#fa'), 'ffa', aOk, aOk ? '✓ Correct' : `✗ a is <b>${fmtN(p.a)} ${unit}</b>`);
+  const nOk = n === p.n; if (nOk) score++;
+  setField($('#fn'), 'ffn', nOk, nOk ? '✓ Correct' : `✗ The total is <b>${p.n}</b>`);
+  const Nexp = a > 0 ? r1(p.A / a * n) : null;
+  let nHtml, NOk = false;
+  if (Nexp === null) nHtml = '✗ a can\'t be 0';
+  else if (Math.abs(Nv - Nexp) < 0.0501) { NOk = true; nHtml = '✓ Correct'; }
+  else if (Math.abs(Nv - Nexp) <= 0.1001) nHtml = `✗ Close. Check your rounding: using your a and n, N = <b>${f1(Nexp)}</b>`;
+  else nHtml = `✗ Using your a and n, N = <b>${f1(Nexp)}</b>`;
+  if (NOk) score++;
+  setField($('#fN'), 'ffN', NOk, nHtml);
+  lockInputs();
+  const Ncorr = r1(p.A / p.a * p.n);
+  const err = Math.abs(Ncorr - p.N) / p.N * 100;
+  if (state.test) testResult(aOk && nOk && NOk, gridIssues(p, { a, n, Nv, aOk, nOk, NOk, Nexp }), `N = (${p.A} ÷ ${fmtN(p.a)}) × ${p.n} = ${f1(Ncorr)}`, f1(Ncorr));
+  else $('#after').innerHTML = resultCard(score, total, Nv, Ncorr, p.N, err, 'Real population') + (p.kind === 'liquid' ? lessonLiquid : lessonGrid)(p, Ncorr, err);
+  $('#checkBtn').disabled = true;
+  $('#after').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 }
 
-function drawBlockLabels(b) {
-  const s = sideOf(b.V);
-  const small = s < 60;
-  if (small) tag(b.label, b.x, b.y - s - Math.max(5, s * 0.1) - 24, { bold: true, size: 14, pad: 4 });
-  else tag(b.label, b.x + 4, b.y - s + 4, { bold: true, size: 14, pad: 4 });
-  if (S.screen === 'mystery') return;
-  const lines = [];
-  if (S.show.mass) lines.push(fmt(b.m) + ' g');
-  if (S.show.vol) lines.push(fmt(b.V) + ' mL');
-  if (S.show.den) lines.push(fmtFixed(b.m / b.V, 2) + ' g/mL');
-  const sz = small ? 13 : 15, step = sz + 8;
-  let yy = b.y - 3 - lines.length * step;
-  for (const t of lines) { tag(t, b.x + 2, yy, { size: sz, pad: 4 }); yy += step; }
+function resultCard(score, total, mine, corr, real, err, realLabel) {
+  const same = Math.abs(mine - corr) < 0.0501;
+  return `<div class="card result">
+    <h2>${score} of ${total} boxes right</h2>
+    <div class="r"><span>Your N</span><b>${Number.isFinite(mine) ? f1(mine) : '—'}</b></div>
+    ${same ? '' : `<div class="r"><span>N from the correct counts</span><b>${f1(corr)}</b></div>`}
+    <div class="r big"><span>${realLabel}</span><b>${real}</b></div>
+    <div class="r"><span>Estimate vs. real</span><b>${trim(err, 1)}% off</b></div>
+  </div>`;
 }
 
-function drawWater(wt, level) {
-  ctx.fillStyle = 'rgba(18, 140, 150, 0.36)'; ctx.fillRect(PL, wt, PR - PL, PB - wt);   // light tint so block colours stay recognisable underwater
-  ctx.fillStyle = 'rgba(140, 220, 220, 0.85)'; ctx.fillRect(PL, wt, PR - PL, 5);
-  // level readout with red pointer, like a measuring cup line
-  ctx.fillStyle = '#e01b1b'; ctx.beginPath(); ctx.moveTo(PL - 18, wt - 9); ctx.lineTo(PL, wt); ctx.lineTo(PL - 18, wt + 9); ctx.fill();
+function edgeLesson(p) {
+  const bits = [];
+  p.edges.forEach((e, i) => {
+    if (e.in) bits.push(`${pre()}${i + 1} had ${e.in} on the edge with half or more inside, so ${e.in > 1 ? 'they count' : 'it counts'}`);
+    if (e.out) bits.push(`${pre()}${i + 1} had ${e.out} on the edge with less than half inside, so ${e.out > 1 ? 'they don\'t' : 'it doesn\'t'}`);
+  });
+  return bits.length ? ` Edge rule: ${bits.join('; ')}.` : '';
 }
-// Water-level readout, drawn last so blocks never hide it.
-function drawLevelReadout(wt, level) {
-  ctx.font = `700 19px ${FONT}`;
-  const txt = t('water') + ': ' + fmt(Math.round(level), 0) + ' mL';
-  const w = ctx.measureText(txt).width + 16, h = 30, x = PL + 8, y = GY + 6;
-  ctx.strokeStyle = '#e01b1b'; ctx.setLineDash([4, 4]); ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x + 12, y + h); ctx.lineTo(x + 12, wt); ctx.stroke(); ctx.setLineDash([]);
-  rr(x, y, w, h, 5); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#e01b1b'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 8, y + 16);
-}
-
-// A thin rod holding a floating block under the water (shown while "Hold floaters under" is on).
-function drawPushRod(b) {
-  const s = sideOf(b.V), cx = b.x + s / 2;
-  ctx.fillStyle = '#5b4a3a'; ctx.fillRect(cx - 3, GY - 18, 6, b.y - s - (GY - 18));
-  ctx.fillStyle = '#ff7a59'; rr(cx - 14, GY - 26, 28, 10, 4); ctx.fill();
-}
-
-function draw() {
-  stepPhysics();
-  const { wt, level } = water();
-  ctx.clearRect(0, 0, W, H);
-  drawBackground();
-  if (S.screen === 'mystery') drawScale();
-  const inPool = b => { const cx = b.x + sideOf(b.V) / 2; return cx > PL && cx < PR && b.y > GY - 1; };
-  const order = [...S.blocks].sort((a, b) => (a.held - b.held));
-  drawWater(wt, level);                                  // water behind the blocks
-  order.filter(inPool).forEach(drawBlockBody);
-  ctx.fillStyle = 'rgba(120, 200, 210, 0.14)';           // faint "under water" tint that keeps colours true
-  ctx.fillRect(PL, wt, PR - PL, PB - wt);
-  ctx.fillStyle = 'rgba(140, 220, 220, 0.85)'; ctx.fillRect(PL, wt, PR - PL, 4);   // water surface line in front
-  if (S.pushUnder) order.filter(b => inPool(b) && !b.held && b.m / b.V <= RHO_WATER).forEach(drawPushRod);
-  order.filter(b => !inPool(b)).forEach(drawBlockBody);
-  order.forEach(drawBlockLabels);
-  drawLevelReadout(wt, level);
+function lessonGrid(p, Ncorr, err) {
+  const isQ = state.mode === 'quad', P = pre(), thing = isQ ? 'quadrat' : 'dip', unit = p.cfg.unit;
+  const whole = isQ ? p.hab.name : p.hab.short;
+  let steps = '';
+  steps += `<li><b>Read each ${thing}'s count.</b> ${p.rects.map((_, i) => `${P}${i + 1} = ${p.counts[i]}`).join(', ')}.${edgeLesson(p)}</li>`;
+  steps += `<li><b>Add the counts.</b> <span class="calc-line">n = ${p.counts.join(' + ')} = ${p.n}</span></li>`;
+  if (p.cfg.conv) {
+    const lines = p.rects.map((r, i) => isQ
+      ? `${P}${i + 1}: ${p.cfg.lab(r.w, r.h)} = ${fmtN(r.w * 100 * r.h * 100)} cm² = ${fmtN(p.areas[i])} m²`
+      : `${P}${i + 1}: ${r.w * r.h * 200} mL = ${fmtN(p.areas[i])} L`).join('<br>');
+    steps += `<li><b>Convert to the same unit as A.</b> ${isQ ? '1 m² = 10,000 cm².' : '1 L = 1,000 mL.'}<br>${lines}</li>`;
+  }
+  steps += `<li><b>Add the ${isQ ? 'area' : 'volume'} sampled.</b> <span class="calc-line">a = ${p.areas.map(fmtN).join(' + ')} = ${fmtN(p.a)} ${unit}</span></li>`;
+  const ratio = p.A / p.a;
+  steps += `<li><b>Scale up.</b> <span class="calc-line">A ÷ a = ${fmtN(p.A)} ÷ ${fmtN(p.a)} ${Math.abs(ratio - Math.round(ratio * 1000) / 1000) > 1e-9 ? '≈' : '='} ${trim(ratio, 3)}</span>. The whole ${whole} is about ${trim(ratio, 1)} times bigger than the part you sampled.</li>`;
+  steps += `<li><b>Multiply by n.</b> <span class="calc-line">N = (${fmtN(p.A)} ÷ ${fmtN(p.a)}) × ${p.n} = ${f1(Ncorr)}</span>. Keep the full calculator number and round only the final answer to 1 decimal place.</li>`;
+  return `<div class="card lesson">
+    <h2>How to get the correct answer</h2>
+    <ol>${steps}</ol>
+    <p class="why">${err < 5 ? 'Very close' : err < 15 ? 'Close' : 'Noticeably off'}: the estimate is ${trim(err, 1)}% from the real ${p.N}. It isn't exact because the ${thing}s landed on random spots, and some had a few more or fewer than average. Sampling a larger share of the ${isQ ? 'area' : 'water'} usually gets you closer.</p>
+    <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="nextBtn">Next problem</button></div>
+  </div>`;
 }
 
+/* ---------- Mark-recapture ---------- */
+const W = 640, H = 400;
+function buildMark() {
+  const cfg = CFG.mark[state.level];
+  const pi = ri(0, PLACES.length - 1), place = PLACES[pi];
+  let N, M, netSizes;
+  for (let t = 0; t < 500; t++) {
+    N = cfg.Nlist ? pick(cfg.Nlist) : ri(cfg.N[0], cfg.N[1]);
+    M = cfg.Mlist ? pick(cfg.Mlist) : ri(cfg.M[0], cfg.M[1]);
+    netSizes = cfg.nets > 1 ? Array.from({ length: cfg.nets }, () => ri(cfg.n[0], cfg.n[1])) : [cfg.nlist ? pick(cfg.nlist) : ri(cfg.n[0], cfg.n[1])];
+    const em = M * sum(netSizes) / N;
+    if (em >= cfg.em[0] && em <= cfg.em[1]) break;
+  }
+  const pop = Array.from({ length: N }, (_, i) => ({ id: i, tagged: false, rot: (i * 137) % 360 }));
+  const vis1 = shuffle(pop.slice()).slice(0, cfg.K);
+  const pts = scatter(cfg.K, 18, 18, W - 18, H - 18, 24, null);
+  vis1.forEach((a, i) => { a.x = pts[i].x; a.y = pts[i].y; a.rot = ri(0, 359); });
+  const bg = `<rect width="${W}" height="${H}" fill="url(#g-p${pi})"/>${blobSVG(W, H, place.blobs, 26, 14, 50)}`;
+  return { kind: 'mark', cfg, place, pi, N, M, pop, vis1, active: vis1.slice(), bg, phase: 'tag', marked: false, tagCount: 0, netSizes, nets: null, checked: false };
+}
+
+const animalHTML = (a, sp) => `<g class="animal${a.tagged ? ' tagged' : ''}" style="transform:translate(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px)"><g transform="rotate(${a.rot} ) scale(1.35)"><use href="#o-${sp}"/></g><circle class="rk" r="13.5"/><circle class="rg" r="13.5"/></g>`;
+
+function sceneMark(p) {
+  const sp = p.place.sp;
+  return `<svg class="scene" id="mscene" viewBox="0 0 ${W} ${H}" role="img" aria-label="Part of ${esc(p.place.name)} with ${esc(SP[sp])}. The habitat continues off screen.">${p.bg}${p.vis1.map(a => animalHTML(a, sp)).join('')}</svg>`;
+}
+
+function storyMark(p) {
+  const pl = SP[p.place.sp];
+  return `<p>A research team studies <b>${esc(pl)}</b> in ${esc(p.place.name)}. The habitat is much bigger than the part you can see, and nobody knows how many animals there are.</p>
+    <p>Day 1: catch and tag <b>${p.M}</b> animals. Day 2: after the tagged animals mix back in, the team sets nets across the whole habitat and counts how many tagged animals they catch.</p>`;
+}
+
+function markWork(p) {
+  return `<div class="card" id="tagCard">
+    <h2>Step 1: Tag ${p.M} animals</h2>
+    <p class="hint">Press Mark. The team catches ${p.M} animals from the whole habitat and tags them (yellow ring). You only see part of the habitat, so some tagged animals are out of view. Then release them.</p>
+    <div class="tagcount" id="tagCount">0 / ${p.M}</div>
+    <div class="tagbar"><i id="tagFill"></i></div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="markBtn">Mark ${p.M} animals</button>
+      <button type="button" class="btn" id="releaseBtn" disabled>Release and recapture</button>
+    </div>
+  </div>
+  <div id="recap"></div>`;
+}
+
+function setTag(p, c) {
+  p.tagCount = c;
+  $('#tagCount').textContent = `${c} / ${p.M}`;
+  $('#tagFill').style.width = (c / p.M * 100) + '%';
+  if (c === p.M && p.phase === 'tag') { $('#releaseBtn').disabled = false; $('#releaseBtn').classList.add('primary'); }
+}
+
+/* ---------- Swimming motion ---------- */
 let raf = 0;
-function loop() { draw(); raf = requestAnimationFrame(loop); }
+const REDUCE = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FWD = { reeffish: 180, trout: 180, turtle: 90, crab: null }; // rotation that points the animal along its heading
+const easeIO = v => -(Math.cos(Math.PI * v) - 1) / 2;
+const angLerp = (a, b, k) => a + ((((b - a) % 360) + 540) % 360 - 180) * k;
+const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const offPoint = () => { const side = ri(0, 3), d = 45 + rnd() * 90; return side === 0 ? { x: -d, y: rnd() * H } : side === 1 ? { x: W + d, y: rnd() * H } : side === 2 ? { x: rnd() * W, y: -d } : { x: rnd() * W, y: H + d }; };
+const initMotion = a => { a.ph = rnd() * 6.28; a.w = 0.5 + rnd() * 0.9; a.cr = a.rot; };
+function linkEls(p) { const gs = [...document.querySelectorAll('#mscene .animal')]; p.vis1.forEach((a, i) => { a.g = gs[i]; a.inner = gs[i].firstElementChild; initMotion(a); }); }
+function addEl(p, a) { const svg = $('#mscene'); svg.insertAdjacentHTML('beforeend', animalHTML(a, p.place.sp)); a.g = svg.lastElementChild; a.inner = a.g.firstElementChild; initMotion(a); }
 
-// Fit the 1000x500 scene to the page width (never smaller than 68% so text stays readable).
-function fit() {
-  const outer = $('stageOuter'), wrap = $('sim');
-  const s = Math.max(0.68, wrap.clientWidth / W);
-  viewScale = s;
-  outer.style.width = W * s + 'px'; outer.style.height = H * s + 'px';
-  $('stageInner').style.transform = `scale(${s})`;
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(W * s * dpr); canvas.height = Math.round(H * s * dpr);
-  ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
-}
-window.addEventListener('resize', () => { if (!$('sim').hidden) fit(); });
-
-// ---------- Dragging ----------
-let drag = null;
-function toScene(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
-canvas.addEventListener('pointerdown', e => {
-  const p = toScene(e);
-  for (let i = S.blocks.length - 1; i >= 0; i--) {
-    const b = S.blocks[i], s = sideOf(b.V);
-    if (p.x >= b.x && p.x <= b.x + s + 6 && p.y >= b.y - s - 6 && p.y <= b.y) {
-      drag = { b, dx: p.x - b.x, dy: p.y - b.y };
-      b.held = true; b.loc = 'held'; b.settled = false;
-      S.blocks.splice(i, 1); S.blocks.push(b);       // bring to front
-      canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging');
-      e.preventDefault(); return;
-    }
-  }
-});
-canvas.addEventListener('pointermove', e => {
-  if (!drag) return;
-  const p = toScene(e), b = drag.b, s = sideOf(b.V);
-  b.x = clamp(p.x - drag.dx, 0, W - s - 10);
-  b.y = p.y - drag.dy;
-  const cx = b.x + s / 2;
-  if (cx > PL && cx < PR) { b.x = clamp(b.x, PL + 3, PR - 3 - s); b.y = Math.min(b.y, PB); }
-  else b.y = Math.min(b.y, GY);
-  b.y = Math.max(b.y, s + 12);
-});
-function endDrag() {
-  if (!drag) return;
-  const b = drag.b; drag = null; canvas.classList.remove('dragging');
-  b.held = false; placeBlock(b);
-}
-
-canvas.addEventListener('pointerup', endDrag);
-canvas.addEventListener('pointercancel', endDrag);
-
-// =====================================================================
-//  SLIDER WIDGET (label, value box, ◀ slider ▶)
-// =====================================================================
-function slider(host, { id, labelKey, min, max, step, value, show, onInput }) {
-  const row = document.createElement('div');
-  const label = t(labelKey);
-  row.className = 'slider-row';
-  row.innerHTML = `<b>${label}</b><span class="val" id="${id}-val"></span>
-    <div class="slider-ctl"><button class="nudge" aria-label="${t('decrease', { x: label })}">◀</button>
-    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}">
-    <button class="nudge" aria-label="${t('increase', { x: label })}">▶</button></div>`;
-  host.appendChild(row);
-  const input = row.querySelector('input'), out = row.querySelector('.val');
-  const [dec, inc] = row.querySelectorAll('.nudge');
-  const update = () => { out.textContent = show(+input.value); onInput(+input.value); };
-  input.addEventListener('input', update);
-  const nudge = dir => { const st = input.step === 'any' ? (input.max - input.min) / 100 : +input.step; input.value = clamp(+input.value + dir * st, +input.min, +input.max); update(); };
-  dec.onclick = () => nudge(-1); inc.onclick = () => nudge(1);
-  out.textContent = show(value);
-  return { input, out, set(v, { min: mn, max: mx } = {}) { if (mn !== undefined) input.min = mn; if (mx !== undefined) input.max = mx; input.value = v; out.textContent = show(v); } };
-}
-
-// =====================================================================
-//  INTRO
-// =====================================================================
-const INTRO_MATS = ['styrofoam', 'wood', 'ice', 'brick', 'aluminum', 'custom'];
-let introMass, introVol;
-function buildIntro() {
-  $('matRadios').innerHTML = INTRO_MATS.map(k => `<label><input type="radio" name="mat" id="mat-${k}" value="${k}" ${k === S.intro.mat ? 'checked' : ''}> <span data-i="${k === 'custom' ? 'custom' : 'mat_' + k}"></span></label>`).join('');
-  $('matRadios').addEventListener('change', e => { S.intro.mat = e.target.value; introSync('mat'); });
-  buildIntroSliders();
-}
-// Sliders are rebuilt when the language changes so their labels update.
-function buildIntroSliders() {
-  const host = $('introSliders');
-  host.innerHTML = '';
-  introMass = slider(host, { id: 'iMass', labelKey: 'mass', min: 5, max: 3000, step: 'any', value: S.intro.m, show: v => fmt(v) + ' g', onInput: v => { S.intro.m = v; introSync('m'); } });
-  introVol = slider(host, { id: 'iVol', labelKey: 'volume', min: 100, max: 1000, step: 10, value: S.intro.V, show: v => fmt(v, 0) + ' mL', onInput: v => { S.intro.V = v; introSync('V'); } });
-}
-// Keep mass, volume and material consistent. A real material has a fixed density,
-// so changing its mass changes its volume (and the other way around).
-function introSync(changed) {
-  const I = S.intro, mat = MATS[I.mat];
-  if (mat) {
-    const lo = mat.d * 100, hi = mat.d * 1000;
-    if (changed === 'm') I.V = clamp(I.m / mat.d, 100, 1000);
-    else I.m = mat.d * I.V;
-    introMass.set(I.m, { min: lo, max: hi });
-  } else introMass.set(I.m, { min: 5, max: 3000 });
-  introVol.set(I.V);
-  const b = S.blocks[0];
-  if (b && S.screen === 'intro') { b.m = I.m; b.V = I.V; b.color = colorForIntro(); refit(['A']); }
-  renderIntroEq();
-  if (S.screen === 'intro') renderKey();
-}
-function renderIntroEq() {
-  const I = S.intro, d = I.m / I.V;
-  $('introEq').innerHTML = `<b>${t('density')} = ${t('massL')} ÷ ${t('volumeL')}</b><br>= ${fmt(I.m)} g ÷ ${fmt(I.V, 0)} mL<br>= <b>${fmtFixed(d, 2)} g/mL</b> ${d < RHO_WATER ? t('floats') : d > RHO_WATER ? t('sinks') : t('sameAsWater')}`;
-}
-const INTRO_COLORS = { styrofoam: '#e8e8e2', wood: '#a8743e', ice: '#9fd4ee', brick: '#b0452e', aluminum: '#a9b3bc', custom: '#2f66c9' };
-const colorForIntro = () => INTRO_COLORS[S.intro.mat];
-function startIntro() {
-  S.blocks = [makeBlock('A', 'A', colorForIntro(), S.intro.m, S.intro.V)];
-  layoutHomes(S.blocks, ['A']);
-  introSync('mat');
-}
-
-// =====================================================================
-//  COMPARE
-// =====================================================================
-// The same four blocks on every Compare screen: A red, B yellow, C green, D blue.
-// In Same Volume and Same Mass each colour is also the SAME material (same density),
-// so students can compare one block across both screens.
-const CMP_COLORS = { A: '#e2342d', B: '#f7d117', C: '#2e9e44', D: '#1f5fd6' };   // clear red, yellow, green, blue
-const CMP_DENS = { A: 1.6, B: 0.4, C: 1.2, D: 0.8 };                              // g/mL: red and green sink, yellow and blue float
-const CMP = {
-  volume:  { labelKey: 'volume', unit: 'mL', min: 100, max: 1000, step: 10, dens: CMP_DENS, colors: CMP_COLORS },
-  mass:    { labelKey: 'mass', unit: 'g', min: 50, max: 400, step: 10, dens: CMP_DENS, colors: CMP_COLORS },   // max 400 g keeps the yellow block (0.4 g/mL) at 1000 mL or less
-  density: { labelKey: 'density', unit: 'g/mL', min: 0.1, max: 2.0, step: 0.05, vols: { A: 400, B: 600, C: 200, D: 100 }, colors: CMP_COLORS },
-};
-let cmpSlider;
-function cmpMass(id) {
-  const c = S.compare, cfg = CMP[c.mode], v = c.val[c.mode];
-  if (c.mode === 'mass') return { m: v, V: v / cfg.dens[id] };
-  if (c.mode === 'volume') return { m: v * cfg.dens[id], V: v };
-  return { m: v * cfg.vols[id], V: cfg.vols[id] };
-}
-function buildCompareSlider() {
-  const c = S.compare, cfg = CMP[c.mode], host = $('compareSlider');
-  host.innerHTML = '';
-  cmpSlider = slider(host, { id: 'cSlider', labelKey: cfg.labelKey, min: cfg.min, max: cfg.max, step: cfg.step, value: c.val[c.mode],
-    show: v => c.mode === 'density' ? fmtFixed(v, 2) + ' g/mL' : fmt(v, 0) + ' ' + cfg.unit,
-    onInput: v => { c.val[c.mode] = v; updateCompareBlocks(); } });
-  $('compareQ').textContent = t('q_' + c.mode);
-}
-function updateCompareBlocks() {
-  for (const b of S.blocks) { const { m, V } = cmpMass(b.id); b.m = m; b.V = V; }
-  refit(['A', 'B']);
-  renderKey();
-}
-function startCompare() {
-  const cfg = CMP[S.compare.mode];
-  S.blocks = ['A', 'B', 'C', 'D'].map(id => { const { m, V } = cmpMass(id); return makeBlock(id, id, cfg.colors[id], m, V); });
-  layoutHomes(S.blocks, ['A', 'B']);
-  buildCompareSlider();
-}
-document.querySelectorAll('input[name=cmode]').forEach(r => r.addEventListener('change', e => { S.compare.mode = e.target.value; startCompare(); }));
-
-// =====================================================================
-//  MYSTERY
-// =====================================================================
-const MYSTERY_SETS = {
-  '1': [['gold', 50], ['steel', 100], ['wood', 300], ['aluminum', 200], ['ice', 400]],
-  '2': [['copper', 80], ['styrofoam', 500], ['brick', 250], ['titanium', 120], ['silver', 60]],
-  '3': [['lead', 90], ['diamond', 40], ['ice', 150], ['steel', 70], ['wood', 450]],
-};
-const MYS_COLORS = ['#3d5a80', '#e07a5f', '#81b29a', '#b5833c', '#1f78d1'];
-function randomSet() {
-  const keys = shuffle(Object.keys(MATS)).slice(0, 5);
-  return keys.map(k => [k, randInt(4, 40) * 10]);   // 40-400 mL, whole tens
-}
-function startMystery() {
-  const M = S.mystery;
-  const def = M.set === 'r' ? randomSet() : MYSTERY_SETS[M.set];
-  const prefix = M.set === 'r' ? 'R' : M.set;
-  const colors = M.set === 'r' ? shuffle([...MYS_COLORS]) : MYS_COLORS;
-  S.blocks = def.map(([mat, V], i) => {
-    const id = prefix + 'ABCDE'[i];
-    return makeBlock(id, id, colors[i], +(MATS[mat].d * V).toFixed(1), V, { mat });
-  });
-  layoutHomes(S.blocks, S.blocks.slice(0, 2).map(b => b.id));
-  M.work = {};
-  M.sel = S.blocks[0].id;
-  renderMeasure();
-  renderKey();
-}
-
-// ---------- Measure a block: students type mass, volume and density, then Check ----------
-const MEAS_IN = { m: 'inMass', v: 'inVol', d: 'inDen' };
-const work = id => (S.mystery.work[id] ||= { m: '', v: '', d: '', tries: 0, done: false, marks: {} });
-const num = str => parseFloat(String(str).replace(',', '.'));   // 2,5 counts as 2.5
-
-function renderMeasure() {
-  const M = S.mystery, w = work(M.sel);
-  $('pickRow').setAttribute('aria-label', t('blocks'));
-  $('pickRow').innerHTML = S.blocks.map(b => `<button data-pick="${b.id}" aria-pressed="${b.id === M.sel}" class="${work(b.id).done ? 'done' : ''}">${b.label}${work(b.id).done ? ' ✓' : ''}</button>`).join('');
-  for (const [k, id] of Object.entries(MEAS_IN)) {
-    const el = $(id); el.value = w[k]; el.disabled = w.done;
-    el.className = w.marks[k] || '';
-  }
-  $('measCheck').disabled = w.done;
-  const n = S.blocks.filter(b => work(b.id).done).length;
-  $('measStatus').textContent = t('doneCount', { n, t: S.blocks.length });
-  renderDataTable();
-}
-// "My data": each block the student measured correctly fills a row with their numbers.
-function renderDataTable() {
-  const head = `<tr><th>${t('colBlock')}</th><th>${t('mass')} (g)</th><th>${t('volume')} (mL)</th><th>${t('density')} (g/mL)</th><th>${t('colSF')}</th></tr>`;
-  const rows = S.blocks.map(b => {
-    const w = work(b.id);
-    if (!w.done) return `<tr><td><b>${b.label}</b></td><td class="empty">—</td><td class="empty">—</td><td class="empty">—</td><td class="empty">—</td></tr>`;
-    return `<tr><td><b>${b.label}</b></td><td>${w.m}</td><td>${w.v}</td><td>${w.d}</td><td>${t(b.m / b.V > RHO_WATER ? 'sinksW' : 'floatsW')}</td></tr>`;
-  }).join('');
-  $('dataTable').innerHTML = head + rows;
-}
-$('pickRow').addEventListener('click', e => { const id = e.target.closest('button')?.dataset.pick; if (id) { S.mystery.sel = id; renderMeasure(); } });
-for (const [k, id] of Object.entries(MEAS_IN)) $(id).addEventListener('input', e => { const w = work(S.mystery.sel); w[k] = e.target.value; delete w.marks[k]; e.target.className = ''; });
-['inMass', 'inVol', 'inDen'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') checkMeasure(); }));
-$('measCheck').onclick = checkMeasure;
-
-function checkMeasure() {
-  const b = S.blocks.find(x => x.id === S.mystery.sel), w = work(b.id);
-  const m = num(w.m), v = num(w.v), d = num(w.d);
-  if ([m, v, d].some(isNaN)) { $('measStatus').textContent = t('needAll'); return; }
-  const trueD = b.m / b.V;
-  // Allow small rounding differences (for example 19.3 for 19.32 g/mL).
-  const ok = {
-    m: Math.abs(m - b.m) <= Math.max(0.15, b.m * 0.005),
-    v: Math.abs(v - b.V) <= Math.max(1, b.V * 0.01),
-    d: Math.abs(d - trueD) <= Math.max(0.026, trueD * 0.015),
+function startMotion(p) {
+  cancelAnimationFrame(raf);
+  linkEls(p);
+  if (REDUCE()) return;
+  const fwd = FWD[p.place.sp];
+  const loop = now => {
+    if (state.prob !== p) return;
+    const an = p.anim;
+    let allDone = !!an;
+    p.active.forEach(a => {
+      let x = a.x, y = a.y, rot = a.cr;
+      if (an && a.path) {
+        const u = clampN((now - an.t0 - a.delay) / a.dur, 0, 1);
+        if (u < 1) allDone = false;
+        const e = easeIO(u), q = 1 - e, [P0, P1, P2, P3] = a.path;
+        x = q*q*q*P0.x + 3*q*q*e*P1.x + 3*q*e*e*P2.x + e*e*e*P3.x;
+        y = q*q*q*P0.y + 3*q*q*e*P1.y + 3*q*e*e*P2.y + e*e*e*P3.y;
+        const dx = 3*q*q*(P1.x-P0.x) + 6*q*e*(P2.x-P1.x) + 3*e*e*(P3.x-P2.x);
+        const dy = 3*q*q*(P1.y-P0.y) + 6*q*e*(P2.y-P1.y) + 3*e*e*(P3.y-P2.y);
+        const wob = Math.sin(u * 22 + a.ph) * 5 * Math.sin(Math.PI * u), L = Math.hypot(dx, dy) || 1;
+        x += -dy / L * wob; y += dx / L * wob;
+        if (fwd !== null && u > 0 && u < 1) a.cr = angLerp(a.cr, Math.atan2(dy, dx) * 180 / Math.PI + fwd, 0.18);
+        rot = a.cr;
+      } else {
+        const t = now / 1000;
+        x += Math.sin(t * a.w + a.ph) * 2.6; y += Math.cos(t * a.w * 0.8 + a.ph) * 2.6;
+        rot = a.cr + Math.sin(t * a.w * 1.3 + a.ph) * 7;
+      }
+      a.g.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      a.inner.setAttribute('transform', `rotate(${rot.toFixed(1)}) scale(1.35)`);
+    });
+    if (an && allDone) { p.anim = null; an.onDone(); }
+    raf = requestAnimationFrame(loop);
   };
-  w.tries++;
-  w.marks = { m: ok.m ? 'ok' : 'bad', v: ok.v ? 'ok' : 'bad', d: ok.d ? 'ok' : 'bad' };
-  const vars = { b: b.label, m: fmtFixed(b.m, 1), v: fmt(b.V, 0), d: fmtFixed(trueD, 2), mat: matName(b.mat) };
-  if (ok.m && ok.v && ok.d) {
-    w.done = true; renderMeasure();
-    confetti();
-    showPopup(true, t('mOkT', vars), `<div class="math">${t('mOkB', vars)}</div>`, t('mOkT', vars) + ' ' + t('mOkB', vars));
-    return;
+  raf = requestAnimationFrame(loop);
+}
+
+function markAnimals(p) {
+  if (p.phase !== 'tag' || p.marked) return;
+  p.marked = true;
+  const inV = new Set(p.vis1);
+  shuffle(p.pop.slice()).slice(0, p.M).forEach(a => { a.tagged = true; });
+  let vt = p.vis1.filter(a => a.tagged);
+  while (vt.length < 3) { // make sure a few tagged animals are on screen
+    const outT = p.pop.filter(a => a.tagged && !inV.has(a)); if (!outT.length) break;
+    pick(outT).tagged = false; pick(p.vis1.filter(a => !a.tagged)).tagged = true; vt = p.vis1.filter(a => a.tagged);
   }
-  renderMeasure();
-  // Red popup: say which values are right, explain how to get each wrong one, then let them redo it.
-  const items = [];
-  items.push(ok.m ? `<li class="ok">${t('mGood', { q: t('mass') })}</li>` : `<li>${t('massBad', vars)}</li>`);
-  items.push(ok.v ? `<li class="ok">${t('mGood', { q: t('volume') })}</li>` : `<li>${t('volBad', vars)}</li>`);
-  if (ok.d) items.push(`<li class="ok">${t('mGood', { q: t('density') })}</li>`);
-  else if (v > 0) items.push(`<li>${t('denBadYours', { m: fmt(m, 2), v: fmt(v, 2), d: fmtFixed(m / v, 2) })}</li>`);
-  else items.push(`<li>${t('denBad')}</li>`);
-  let html = `<ul class="checks">${items.join('')}</ul>`;
-  if (w.tries >= 2) html += `<p>${t('reveal', vars)}</p>`;   // after 2 misses, show the right numbers so nobody gets stuck
-  const tmp = document.createElement('div'); tmp.innerHTML = html;
-  showPopup(false, t('mBadT'), html, t('mBadT') + '. ' + tmp.textContent, {
-    closeLabel: t('tryAgain'),
-    onClose: () => { const first = ['m', 'v', 'd'].find(k => !ok[k]); $(MEAS_IN[first]).focus(); },
+  $('#markBtn').disabled = true;
+  const reduce = REDUCE(), J = Math.min(p.M, 30), per = Math.ceil(vt.length / J);
+  let popped = 0;
+  for (let k = 1; k <= J; k++) {
+    const go = () => {
+      if (state.prob !== p) return;
+      setTag(p, k === J ? p.M : Math.round(p.M * k / J));
+      const upto = Math.min(vt.length, per * k);
+      for (; popped < upto; popped++) vt[popped].g.classList.add('tagged');
+    };
+    if (reduce) go(); else setTimeout(go, k * 2600 / J);
+  }
+}
+
+function release(p) {
+  if (p.phase !== 'tag' || !p.marked || p.tagCount !== p.M) return;
+  p.phase = 'recap';
+  // the second catch comes from the WHOLE population, on screen or not
+  let nets, m;
+  for (let t = 0; t < 300; t++) {
+    const pool = shuffle(p.pop.slice()); nets = []; let at = 0;
+    p.netSizes.forEach(sz => { nets.push(pool.slice(at, at + sz)); at += sz; });
+    m = sum(nets.map(ns => ns.filter(a => a.tagged).length));
+    if (m >= p.cfg.minM) break;
+  }
+  p.nets = nets;
+  // who is on screen afterwards: some stay, some leave, new ones swim in (tagged ones too)
+  const K = p.vis1.length, inV = new Set(p.vis1);
+  const stay = shuffle(p.vis1.slice()).slice(0, Math.round(K * 0.5)), stayS = new Set(stay);
+  const outside = p.pop.filter(a => !inV.has(a)), need = K - stay.length;
+  const enterT = shuffle(outside.filter(a => a.tagged)).slice(0, Math.max(2, Math.round(need * p.M / p.N)));
+  const enterO = shuffle(outside.filter(a => !a.tagged)).slice(0, need - enterT.length);
+  const entrants = enterT.concat(enterO);
+  const vis2 = stay.concat(entrants), leavers = p.vis1.filter(a => !stayS.has(a));
+  const np = scatter(vis2.length, 18, 18, W - 18, H - 18, 24, null);
+  vis2.forEach((a, i) => { a.finalX = np[i].x; a.finalY = np[i].y; });
+  $('#releaseBtn').disabled = true; $('#markBtn').disabled = true;
+  const reduce = REDUCE();
+  const finish = () => {
+    if (state.prob !== p) return;
+    leavers.forEach(a => a.g.remove());
+    vis2.forEach(a => { a.x = a.finalX; a.y = a.finalY; a.path = null; });
+    p.vis1 = vis2; p.active = vis2.slice();
+    $('#tagCount').textContent = `${p.M} tagged and released`;
+    setTimeout(() => {
+      if (state.prob !== p) return;
+      $('#recap').innerHTML = recapHTML(p);
+      $('#checkBtn').onclick = checkMark;
+      $('#recap').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }, reduce ? 0 : 500);
+  };
+  entrants.forEach(a => { a.rot = ri(0, 359); const o = offPoint(); a.x = o.x; a.y = o.y; addEl(p, a); });
+  if (reduce) {
+    entrants.forEach(a => { a.g.style.transform = `translate(${a.finalX.toFixed(1)}px,${a.finalY.toFixed(1)}px)`; });
+    stay.forEach(a => { a.g.style.transform = `translate(${a.finalX.toFixed(1)}px,${a.finalY.toFixed(1)}px)`; });
+    leavers.forEach(a => a.g.remove()); finishSync(p, vis2, leavers, reduce); return;
+  }
+  $('#tagCount').textContent = 'Released. Mixing back in…';
+  const jump = (x, y, lo) => { const ang = rnd() * 6.283, d = lo + rnd() * 110; return { x: clampN(x + Math.cos(ang) * d, 18, W - 18), y: clampN(y + Math.sin(ang) * d, 18, H - 18) }; };
+  const mid = (A, B) => ({ x: (A.x + B.x) / 2 + (rnd() - .5) * 120, y: (A.y + B.y) / 2 + (rnd() - .5) * 120 });
+  const returners = new Set(stay.filter(a => rnd() < (a.tagged ? 0.65 : 0.3)));
+  p.active = p.vis1.concat(entrants);
+  p.active.forEach(a => {
+    const P0 = { x: a.x, y: a.y };
+    if (stayS.has(a) && !returners.has(a)) { const P3 = { x: a.finalX, y: a.finalY }; a.path = [P0, jump(P0.x, P0.y, 110), jump(P3.x, P3.y, 110), P3]; a.dur = 3200 + rnd() * 1000; }
+    else if (returners.has(a)) { const P3 = { x: a.finalX, y: a.finalY }; a.path = [P0, offPoint(), offPoint(), P3]; a.dur = 4600 + rnd() * 1200; }
+    else if (!stayS.has(a) && inV.has(a)) { const P3 = offPoint(); a.path = [P0, jump(P0.x, P0.y, 110), mid(P0, P3), P3]; a.dur = 3000 + rnd() * 1200; }
+    else { const P3 = { x: a.finalX, y: a.finalY }; a.path = [P0, mid(P0, P3), jump(P3.x, P3.y, 110), P3]; a.dur = 3200 + rnd() * 1200; }
+    a.delay = rnd() * 300;
   });
+  p.anim = { t0: performance.now(), onDone: finish };
 }
-document.querySelectorAll('input[name=mset]').forEach(r => r.addEventListener('change', e => { S.mystery.set = e.target.value; startMystery(); }));
-function buildDensityTable() {
-  const keys = Object.keys(MATS), half = Math.ceil(keys.length / 2); let h = '';
-  for (let i = 0; i < half; i++) {
-    const a = keys[i], b = keys[i + half];
-    h += `<tr><td>${matName(a)}</td><td class="n">${fmtFixed(MATS[a].d, 2)}</td><td>${b ? matName(b) : ''}</td><td class="n">${b ? fmtFixed(MATS[b].d, 2) : ''}</td></tr>`;
+function finishSync(p, vis2, leavers) {
+  vis2.forEach(a => { a.x = a.finalX; a.y = a.finalY; });
+  p.vis1 = vis2; p.active = vis2.slice();
+  $('#tagCount').textContent = `${p.M} tagged and released`;
+  $('#recap').innerHTML = recapHTML(p);
+  $('#checkBtn').onclick = checkMark;
+}
+
+function netSVG(p, ns) {
+  const cols = 12, cell = 36, rows = Math.max(1, Math.ceil(ns.length / cols));
+  let s = `<svg viewBox="0 0 ${cols * cell} ${rows * cell}" role="img" aria-label="Animals in this catch">`;
+  ns.forEach((a, i) => {
+    const cx = (i % cols) * cell + cell / 2, cy = Math.floor(i / cols) * cell + cell / 2;
+    s += `<g class="animal${a.tagged ? ' tagged' : ''}" transform="translate(${cx} ${cy})"><g transform="rotate(${a.rot}) scale(1.3)"><use href="#o-${p.place.sp}"/></g><circle class="rk" r="14.5"/><circle class="rg" r="14.5"/></g>`;
+  });
+  return s + '</svg>';
+}
+
+function recapHTML(p) {
+  const multi = p.nets.length > 1, L = ['A', 'B', 'C'];
+  const netCards = p.nets.map((ids, i) => `
+    <div class="net"><div class="pname"><b>${multi ? 'Net ' + L[i] : 'Second catch'}</b><span>${ids.length} caught · ${ids.filter(a => a.tagged).length} tagged</span></div>
+      ${netSVG(p, ids)}
+    </div>`).join('');
+  return `
+  <div class="card">
+    <h2>Step 2: Read the recapture</h2>
+    <p class="hint">The animals mixed back in. The team set nets across the whole habitat and recorded, for ${multi ? 'each net' : 'the net'}, how many animals were caught and how many of them were tagged (yellow rings).${multi ? ' Add up all three nets.' : ''}</p>
+    <div class="nets">${netCards}</div>
+  </div>
+  <div class="card">
+    <h2>Step 3: Calculate</h2>
+    ${ruleHTML()}
+    ${calcHTML()}
+    <div class="calc">
+      <div class="row"><label for="fM">M = tagged on day 1<small>How many you tagged</small></label><input class="num" id="fM" inputmode="numeric" autocomplete="off"><div class="fb" id="ffM"></div></div>
+      <div class="row"><label for="fn">n = total in the second catch<small>${multi ? 'Add the three net totals' : 'The number caught, shown on the net'}</small></label><input class="num" id="fn" inputmode="numeric" autocomplete="off"><div class="fb" id="ffn"></div></div>
+      <div class="row"><label for="fm">m = tagged in the second catch<small>${multi ? 'Add the three net totals' : 'The number tagged, shown on the net'}</small></label><input class="num" id="fm" inputmode="numeric" autocomplete="off"><div class="fb" id="ffm"></div></div>
+      <div class="row"><label for="fN">N = (M / m) × n<small>Round to 1 decimal place, like 245.0</small></label><input class="num" id="fN" inputmode="decimal" autocomplete="off"><div class="fb" id="ffN"></div></div>
+    </div>
+    <p class="msg" id="msg" role="alert"></p>
+    <div class="actions"><button type="button" class="btn primary" id="checkBtn">Check my work</button></div>
+  </div>
+  <div id="after"></div>`;
+}
+
+function checkMark() {
+  const p = state.prob; if (p.checked) return;
+  const sumN = sum(p.nets.map(ns => ns.length)), sumMt = sum(p.nets.map(ns => ns.filter(a => a.tagged).length));
+  const ids = ['fM', 'fn', 'fm', 'fN'];
+  const vals = ids.map(id => parseNum($('#' + id).value));
+  const bad = ids.findIndex((id, i) => Number.isNaN(vals[i]) || (id !== 'fN' && (!Number.isInteger(vals[i]) || vals[i] < 0)));
+  if (bad >= 0) { $('#msg').textContent = Number.isNaN(vals[bad]) ? 'Fill in every box with a number first.' : 'Counts must be whole numbers.'; $('#' + ids[bad]).focus(); return; }
+  $('#msg').textContent = '';
+  p.checked = true;
+  const [Mv, nv, mv, Nv] = vals;
+  let score = 0; const total = 4;
+  const ok1 = Mv === p.M; if (ok1) score++;
+  setField($('#fM'), 'ffM', ok1, ok1 ? '✓ Correct' : `✗ You tagged <b>${p.M}</b>`);
+  const nOk = nv === sumN; if (nOk) score++;
+  setField($('#fn'), 'ffn', nOk, nOk ? '✓ Correct' : `✗ The total is <b>${sumN}</b>`);
+  const mOk = mv === sumMt; if (mOk) score++;
+  setField($('#fm'), 'ffm', mOk, mOk ? '✓ Correct' : `✗ The total is <b>${sumMt}</b>`);
+  const Nexp = mv > 0 ? r1(Mv / mv * nv) : null;
+  let html, NOk = false;
+  if (Nexp === null) html = '✗ m can\'t be 0';
+  else if (Math.abs(Nv - Nexp) < 0.0501) { NOk = true; html = '✓ Correct'; }
+  else if (Math.abs(Nv - Nexp) <= 0.1001) html = `✗ Close. Check your rounding: using your M, m and n, N = <b>${f1(Nexp)}</b>`;
+  else html = `✗ Using your M, m and n, N = <b>${f1(Nexp)}</b>`;
+  if (NOk) score++;
+  setField($('#fN'), 'ffN', NOk, html);
+  lockInputs();
+  const Ncorr = r1(p.M / sumMt * sumN);
+  const err = Math.abs(Ncorr - p.N) / p.N * 100;
+  if (state.test) testResult(ok1 && nOk && mOk && NOk, markIssues(p, { Mv, nv, mv, Nv, ok1, nOk, mOk, NOk, Nexp, sumN, sumMt }), `N = (${p.M} ÷ ${sumMt}) × ${sumN} = ${f1(Ncorr)}`, f1(Ncorr));
+  else $('#after').innerHTML = resultCard(score, total, Nv, Ncorr, p.N, err, 'Real population') + lessonMark(p, sumN, sumMt, Ncorr, err);
+  $('#checkBtn').disabled = true;
+  $('#after').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+
+function lessonMark(p, n, m, Ncorr, err) {
+  const multi = p.nets.length > 1, L = ['A', 'B', 'C'];
+  const netN = p.nets.map(ns => ns.length), netM = p.nets.map(ns => ns.filter(a => a.tagged).length);
+  let steps = '';
+  steps += `<li><b>M = ${p.M}.</b> That's how many you tagged on day 1.</li>`;
+  steps += `<li><b>Total second catch.</b> ${multi ? `<span class="calc-line">n = ${netN.map((x, i) => `${x}`).join(' + ')} = ${n}</span> (nets ${netN.map((x, i) => L[i] + ' = ' + x).join(', ')})` : `<span class="calc-line">n = ${n}</span>`}. The team recorded every animal caught, tagged or not.</li>`;
+  steps += `<li><b>Tagged in the second catch.</b> ${multi ? `<span class="calc-line">m = ${netM.join(' + ')} = ${m}</span>` : `<span class="calc-line">m = ${m}</span>`}. The team recorded how many of the catch were tagged.</li>`;
+  steps += `<li><b>The idea.</b> ${m} of ${n} recaptured animals were tagged, which is ${trim(m / n * 100, 1)}%. If the tagged animals mixed in evenly, about ${trim(m / n * 100, 1)}% of the <i>whole</i> population is tagged too. So ${p.M} is about ${trim(m / n * 100, 1)}% of N.</li>`;
+  steps += `<li><b>Calculate.</b> <span class="calc-line">N = (M ÷ m) × n = (${p.M} ÷ ${m}) × ${n} = ${f1(Ncorr)}</span>. Round only the final answer to 1 decimal place.</li>`;
+  return `<div class="card lesson">
+    <h2>How to get the correct answer</h2>
+    <ol>${steps}</ol>
+    <p class="why">The estimate is ${trim(err, 1)}% from the real ${p.N}. It isn't exact because the second catch is a random sample, so m changes a little each time. Only part of the habitat was on screen, and that's fine: the tagged animals mixed in with the whole population, so the catch can come from anywhere. In real life you can't count every animal. That's why mark-recapture is used.</p>
+    <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="nextBtn">Next problem</button></div>
+  </div>`;
+}
+
+/* ---------- Calculator (no eval; full precision, students round themselves) ---------- */
+let calcOpen = true;
+function calcEval(src) {
+  const t = src.replace(/\s+/g, '').replace(/[×x*]/gi, '*').replace(/[÷/]/g, '/').replace(/[−–]/g, '-').replace(/,/g, '');
+  let i = 0;
+  const peek = () => t[i];
+  const fac = () => {
+    if (peek() === '-') { i++; return -fac(); }
+    if (peek() === '+') { i++; return fac(); }
+    if (peek() === '(') { i++; const v = expr(); if (peek() !== ')') throw new Error('syntax'); i++; return v; }
+    const m = /^\d*\.?\d+|^\d+\.?/.exec(t.slice(i)); if (!m) throw new Error('syntax');
+    i += m[0].length; return parseFloat(m[0]);
+  };
+  const term = () => {
+    let v = fac();
+    while (peek() === '*' || peek() === '/' || peek() === '(') {
+      if (peek() === '(') { v *= fac(); continue; }
+      const o = t[i++], r = fac();
+      if (o === '/') { if (r === 0) throw new Error('div0'); v /= r; } else v *= r;
+    }
+    return v;
+  };
+  const expr = () => {
+    let v = term();
+    while (peek() === '+' || peek() === '-') { const o = t[i++], r = term(); v = o === '+' ? v + r : v - r; }
+    return v;
+  };
+  if (!t.length) throw new Error('empty');
+  const v = expr(); if (i !== t.length) throw new Error('syntax'); return v;
+}
+const calcFmt = v => { const s = parseFloat(v.toPrecision(12)).toString(); return s.includes('e') ? v.toPrecision(8) : s; };
+function calcHTML() {
+  const keys = ['C', '⌫', '(', ')', '7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '0', '.', '=', '+'];
+  const cls = k => k === '=' ? 'ck eq' : '÷×−+'.includes(k) || 'C⌫()'.includes(k) ? 'ck op' : 'ck';
+  return `<details class="calcbox" ${calcOpen ? 'open' : ''}><summary>Calculator</summary><div class="calcbody">
+    <input class="cexpr" id="cexpr" type="text" inputmode="none" autocomplete="off" spellcheck="false" aria-label="Calculator expression" placeholder="0">
+    <div class="cout" id="cout" aria-live="polite"></div>
+    <div class="ckeys">${keys.map(k => `<button type="button" class="${cls(k)}" data-k="${k}" aria-label="${({ '÷': 'divide', '×': 'times', '−': 'minus', '+': 'plus', '⌫': 'backspace', 'C': 'clear', '=': 'equals' })[k] || k}">${k}</button>`).join('')}</div>
+  </div></details>`;
+}
+function calcPreview(final) {
+  const inp = $('#cexpr'), out = $('#cout'); if (!inp) return;
+  out.classList.remove('err');
+  if (!inp.value.trim()) { out.textContent = ''; return; }
+  try { const v = calcEval(inp.value); if (!Number.isFinite(v)) throw new Error('syntax'); out.textContent = final ? '' : '= ' + calcFmt(v); return v; }
+  catch (e) { if (final) { out.classList.add('err'); out.textContent = e.message === 'div0' ? "Can't divide by 0" : 'Check the expression'; } else out.textContent = ''; }
+}
+function calcPress(k) {
+  const inp = $('#cexpr'); if (!inp) return;
+  const fresh = inp.dataset.fresh === '1';
+  if (k !== '=') inp.dataset.fresh = '0';
+  if (k === 'C') { inp.value = ''; $('#cout').textContent = ''; return; }
+  if (k === '⌫') { inp.value = fresh ? '' : inp.value.slice(0, -1); calcPreview(); return; }
+  if (k === '=') {
+    const v = calcPreview(true); if (v === undefined) return;
+    inp.value = calcFmt(v); inp.dataset.fresh = '1'; $('#cout').textContent = ''; return;
   }
-  $('dtableBody').innerHTML = `<tr><td colspan="4" style="font-weight:700">${t('tableHead')}</td></tr>` + h;
+  if (fresh && /[0-9.(]/.test(k)) inp.value = '';
+  inp.value += k; calcPreview();
 }
-$('tableBtn').onclick = () => { const t = $('dtable'); t.hidden = !t.hidden; $('tablePlus').textContent = t.hidden ? '+' : '−'; $('tableBtn').setAttribute('aria-expanded', String(!t.hidden)); };
 
-// Blocks on Intro and Compare always show their mass (the "Show on blocks" panel was removed).
+/* ---------- Tests: confetti + green/red pop-ups ---------- */
+const TEST_LEN = 5;
+const MODE_NAME = { quad: 'Quadrat', liquid: 'Liquid sample', mark: 'Mark-recapture' };
+const LVL_NAME = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+let cf = 0;
+function confetti() {
+  if (REDUCE()) return;
+  let cv = $('#confetti');
+  if (!cv) { cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden', 'true'); cv.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1100'; document.body.appendChild(cv); }
+  const ctx = cv.getContext && cv.getContext('2d'); if (!ctx) return;
+  const dpr = window.devicePixelRatio || 1, Wd = innerWidth, Hd = innerHeight;
+  cv.width = Wd * dpr; cv.height = Hd * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cols = ['#1d7f47', '#f5b301', '#e0218a', '#0e6f6a', '#3b82f6', '#ff7a1a', '#ffffff'];
+  const parts = Array.from({ length: 180 }, () => ({ x: rnd() * Wd, y: -20 - rnd() * Hd * 0.7, vx: (rnd() - .5) * 2, vy: 2 + rnd() * 3.5, r: rnd() * 6.28, vr: (rnd() - .5) * .3, w: 6 + rnd() * 6, h: 9 + rnd() * 8, c: pick(cols), wob: rnd() * 6.28 }));
+  const t0 = performance.now(); cancelAnimationFrame(cf);
+  const step = now => {
+    ctx.clearRect(0, 0, Wd, Hd); let alive = 0;
+    parts.forEach(q => {
+      q.vy += 0.03; q.x += q.vx + Math.sin(now / 300 + q.wob) * 0.6; q.y += q.vy; q.r += q.vr;
+      if (q.y < Hd + 30) alive++;
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.r); ctx.fillStyle = q.c; ctx.fillRect(-q.w / 2, -q.h / 2, q.w, q.h); ctx.restore();
+    });
+    if (alive && now - t0 < 7000) cf = requestAnimationFrame(step); else ctx.clearRect(0, 0, Wd, Hd);
+  };
+  cf = requestAnimationFrame(step);
+}
+function closePopup() { const o = $('#pop'); if (o) o.remove(); const cv = $('#confetti'); if (cv && !cv.dataset.keep) { /* let confetti finish falling */ } }
+function showPopup(ok, head, body, btn, onBtn) {
+  closePopup();
+  const o = document.createElement('div');
+  o.id = 'pop'; o.className = 'pop ' + (ok ? 'ok' : 'bad'); o.setAttribute('role', 'alertdialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-labelledby', 'pophead');
+  o.innerHTML = `<div class="popcard"><div class="popicon" aria-hidden="true">${ok ? '✓' : '✗'}</div><h2 id="pophead">${head}</h2><div class="popbody">${body}</div><button type="button" class="btn popbtn" id="popBtn">${btn}</button></div>`;
+  document.body.appendChild(o);
+  $('#popBtn').onclick = () => { closePopup(); onBtn(); };
+  $('#popBtn').focus();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
 
-// =====================================================================
-//  TEST (5th screen): 4 clues, 2 are distractors (width in cm, temperature in °F)
-// =====================================================================
-const TEST_DENS = [0.4, 0.5, 0.8, 0.9, 1.2, 1.5, 2.0, 2.5, 2.7, 3.5, 4.5, 7.8, 8.9, 10.5, 11.3, 19.3];
-// mL and cm³ are the same amount, and g/mL and g/cm³ are the same density, so each pair is ONE choice.
-// cm and °F are the 2 dummy units.
-const UNIT_CHOICES = ['g', 'cm', 'mL', '°F', 'g/mL'];
-const UNIT_LABEL = { 'mL': 'mL = cm³', 'g/mL': 'g/mL = g/cm³' };
-const unitLabel = u => UNIT_LABEL[u] || u;
-const RIGHT_UNITS = { mass: ['g'], volume: ['mL', 'cm³'], density: ['g/mL', 'g/cm³'] };
-const qName = q => t({ mass: 'massL', volume: 'volumeL', density: 'densityL', width: 'widthL', temp: 'tempL' }[q]);
-const qThe = q => t({ mass: 'theMass', volume: 'theVolume', density: 'theDensity' }[q]);
-const T = { p: null, done: false, correct: 0, tried: 0, streak: 0 };
+function gridIssues(p, v) {
+  const out = [], liquid = p.kind === 'liquid';
+  if (!v.nOk) out.push(`<b>n</b> is the total of the counts shown: ${p.counts.join(' + ')} = ${p.n}. You entered ${v.n}.`);
+  if (!v.aOk) out.push(liquid
+    ? `<b>a</b> is the total volume of all the test tubes: ${p.tubes.map(t => t.v).join(' + ')} = ${p.a} mL. You entered ${fmtN(v.a)}.`
+    : `<b>a</b> is the total area of all the quadrats: ${p.areas.map(fmtN).join(' + ')} = ${fmtN(p.a)} ${p.cfg.unit}. You entered ${fmtN(v.a)}.`);
+  if (!v.NOk) {
+    if (v.Nexp === null) out.push(`<b>a</b> can't be 0.`);
+    else if (Math.abs(v.Nv - v.Nexp) <= 0.1001) out.push(`<b>N</b> is almost there, but the rounding is off. Round to 1 decimal place: with your numbers (A ÷ a) × n = ${f1(v.Nexp)}. You entered ${v.Nv}.`);
+    else out.push(`<b>N</b> comes from N = (A ÷ a) × n. With your numbers that is (${p.A} ÷ ${fmtN(v.a)}) × ${v.n} = ${f1(v.Nexp)}. You entered ${v.Nv}.`);
+  }
+  return out;
+}
+function markIssues(p, v) {
+  const out = [];
+  const netN = p.nets.map(ns => ns.length), netM = p.nets.map(ns => ns.filter(a => a.tagged).length);
+  const lst = arr => arr.length > 1 ? `${arr.join(' + ')} = ` : '';
+  if (!v.ok1) out.push(`<b>M</b> is how many animals were tagged on day 1: ${p.M}. You entered ${v.Mv}.`);
+  if (!v.nOk) out.push(`<b>n</b> is the total caught in the second catch: ${lst(netN)}${v.sumN}. You entered ${v.nv}.`);
+  if (!v.mOk) out.push(`<b>m</b> is how many of the second catch were tagged: ${lst(netM)}${v.sumMt}. You entered ${v.mv}.`);
+  if (!v.NOk) {
+    if (v.Nexp === null) out.push(`<b>m</b> can't be 0.`);
+    else if (Math.abs(v.Nv - v.Nexp) <= 0.1001) out.push(`<b>N</b> is almost there, but the rounding is off. Round to 1 decimal place: with your numbers (M ÷ m) × n = ${f1(v.Nexp)}. You entered ${v.Nv}.`);
+    else out.push(`<b>N</b> comes from N = (M ÷ m) × n. With your numbers that is (${v.Mv} ÷ ${v.mv}) × ${v.nv} = ${f1(v.Nexp)}. You entered ${v.Nv}.`);
+  }
+  return out;
+}
+
+function updateTestBar(done) {
+  const t = state.test, bar = $('#testbar');
+  bar.hidden = !t; if (!t) return;
+  bar.innerHTML = `<b>${t.kind === 'mark' ? 'Mark and recapture test' : 'Random sampling test'}</b> · ${done ? 'Finished' : `Question ${t.i} of ${TEST_LEN}`} · Score ${t.score} · Round N to 1 decimal place`;
+}
+function syncControls() {
+  const t = state.test;
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', !t && b.dataset.mode === state.mode));
+  document.querySelectorAll('[data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === state.level));
+  document.querySelectorAll('[data-test]').forEach(b => b.setAttribute('aria-pressed', !!t && b.dataset.test === t.kind));
+  $('#levelCtrl').hidden = !!t; $('#newBtn').hidden = !!t;
+  updateTestBar();
+}
+function startTest(kind) {
+  closePopup();
+  if (!state.test) state.pLevel = state.level;
+  const lv = shuffle(['easy', 'easy', 'medium', 'medium', pick(['easy', 'medium'])]);
+  const md = kind === 'mark' ? Array(TEST_LEN).fill('mark') : shuffle(['quad', 'quad', 'liquid', 'liquid', pick(['quad', 'liquid'])]);
+  state.test = { kind, i: 0, score: 0, res: [], lv, md };
+  testNextQ();
+}
+function testNextQ() {
+  const t = state.test; if (!t) return;
+  if (t.i >= TEST_LEN) { testSummary(); return; }
+  state.mode = t.md[t.i]; state.level = t.lv[t.i]; t.i++;
+  syncControls(); newProblem();
+}
+function testResult(ok, issues, correctLine, correctN) {
+  const t = state.test; if (!t) return;
+  t.res.push({ label: `${MODE_NAME[state.mode]} (${LVL_NAME[state.level]})`, ok });
+  if (ok) t.score++;
+  updateTestBar();
+  const last = t.i >= TEST_LEN, btn = last ? 'See my score' : 'Next question';
+  $('#after').innerHTML = `<div class="card"><div class="actions"><button type="button" class="btn primary testNext">${btn}</button></div></div>`;
+  if (ok) {
+    showPopup(true, 'Correct!', `<p>All your answers are right.</p><p class="pbig">N = ${correctN}</p><p>Score: ${t.score} of ${t.i}</p>`, btn, testNextQ);
+    confetti();
+  } else {
+    showPopup(false, 'Not quite', `<p>Here is what went wrong:</p><ul>${issues.map(x => `<li>${x}</li>`).join('')}</ul><p>The correct answer is <b>${correctLine}</b>.</p>`, btn, testNextQ);
+  }
+}
+function testSummary() {
+  const t = state.test; updateTestBar(true);
+  $('#story').innerHTML = `<p><b>Test complete.</b> You got ${t.score} of ${TEST_LEN} right.</p><p>Take it again for new problems, or go back to practice.</p>`;
+  $('#scene').innerHTML = ''; $('#legend').textContent = '';
+  const msg = t.score === TEST_LEN ? 'Perfect score!' : t.score >= 4 ? 'Great work.' : t.score >= 3 ? 'Good start. Practice the steps you missed.' : 'Keep practicing. Use the practice buttons for a worked walkthrough.';
+  $('#work').innerHTML = `<div class="card"><h2>${t.score} / ${TEST_LEN}</h2><p class="hint">${msg}</p>
+    <ul class="sumlist">${t.res.map((r, i) => `<li><span>Question ${i + 1}: ${r.label}</span><span class="${r.ok ? 'ok' : 'no'}">${r.ok ? '✓ Correct' : '✗ Missed'}</span></li>`).join('')}</ul>
+    <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" data-test="${t.kind}">Take the test again</button><button type="button" class="btn" data-mode="quad">Back to practice</button></div></div>`;
+  if (t.score === TEST_LEN) confetti();
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- Rendering ---------- */
+function formulaHTML() {
+  const m = state.mode;
+  const eq = m === 'mark' ? 'N = (M / m) × n' : 'N = (A / a) × n';
+  const w = m === 'quad' ? 'area' : 'volume';
+  const vars = m === 'mark'
+    ? ['<b>N</b> estimated population', '<b>M</b> tagged on day 1', '<b>n</b> total in second catch', '<b>m</b> tagged in second catch']
+    : ['<b>N</b> estimated population', `<b>A</b> total ${w}${m === 'liquid' ? ' (mL)' : ''}`, `<b>n</b> number counted`, `<b>a</b> ${w} sampled${m === 'liquid' ? ' (mL)' : ''}`];
+  return `<div class="eq">${eq}</div><ul class="vars">${vars.map(v => `<li>${v}</li>`).join('')}</ul><p class="round">Round your final answer to 1 decimal place (like 245.0).</p>`;
+}
+
+function render() {
+  const p = state.prob;
+  $('#formula').innerHTML = formulaHTML();
+  if (!p) return;
+  if (p.kind === 'liquid') {
+    $('#story').innerHTML = storyLiquid(p) + `<p>${LEVEL_NOTE.liquid[state.level]}</p>`;
+    $('#scene').innerHTML = sceneLiquid(p);
+    $('#legend').textContent = 'The flask is well mixed, so each test tube is a random sample. Only a few of the organisms are drawn in the flask.';
+    $('#work').innerHTML = liquidWork(p);
+    $('#checkBtn').onclick = checkGrid;
+  } else if (p.kind === 'grid') {
+    $('#story').innerHTML = storyGrid(p) + `<p>${LEVEL_NOTE[state.mode][state.level]}</p>`;
+    $('#scene').innerHTML = sceneGrid(p);
+    $('#legend').textContent = p.cfg.leg + ' Yellow frames show where the samples were taken.';
+    $('#work').innerHTML = gridWork(p);
+    $('#checkBtn').onclick = checkGrid;
+  } else {
+    $('#story').innerHTML = storyMark(p) + `<p>${LEVEL_NOTE.mark[state.level]}</p>`;
+    $('#scene').innerHTML = sceneMark(p);
+    $('#legend').textContent = 'You only see part of the habitat. Animals swim in and out of view, and tagged animals (yellow rings) can leave and return.';
+    $('#work').innerHTML = markWork(p);
+    $('#markBtn').onclick = () => markAnimals(p);
+    $('#releaseBtn').onclick = () => release(p);
+    startMotion(p);
+  }
+}
 
 function newProblem() {
-  const D = pick(TEST_DENS), V = randInt(2, 60), m = Math.round(D * V * 10) / 10;   // every answer has at most 1 decimal
-  const unknown = pick(['mass', 'volume', 'density']);
-  const vU = Math.random() < 0.5 ? 'mL' : 'cm³', dU = Math.random() < 0.5 ? 'g/mL' : 'g/cm³';
-  const clues = [];
-  if (unknown !== 'mass') clues.push({ q: 'mass', val: m, unit: 'g' });
-  if (unknown !== 'volume') clues.push({ q: 'volume', val: V, unit: vU });
-  if (unknown !== 'density') clues.push({ q: 'density', val: D, unit: dU });
-  clues.push({ q: 'width', val: randInt(2, 40), unit: 'cm' });
-  clues.push({ q: 'temp', val: randInt(34, 98), unit: '°F' });
-  T.p = { D, V, m, unknown, vU, dU, clues: shuffle(clues), answer: { mass: m, volume: V, density: D }[unknown] };
-  T.done = false;
-  $('clues').innerHTML = T.p.clues.map(c => `<li><span>${fmt(c.val)}</span><span class="u">${c.unit}</span></li>`).join('') + `<li class="missing">? = ________</li>`;
-  $('ansNum').value = ''; $('ansUnit').value = ''; $('ansNum').disabled = $('ansUnit').disabled = $('checkBtn').disabled = false;
-  $('testMsg').textContent = '';
-  renderKey();
-}
-$('ansUnit').innerHTML = '<option value="" data-i="choose"></option>' + UNIT_CHOICES.map(u => `<option value="${u}">${unitLabel(u)}</option>`).join('');
-
-function workedSolution(p) {
-  const vU = p.vU, dU = p.dU;
-  const sort = p.clues.map(c => `${fmt(c.val)} ${c.unit} → ${qName(c.q)}${c.q === 'width' || c.q === 'temp' ? ' ' + t('notNeeded') : ' ✓'}`).join('<br>');
-  let eq;
-  if (p.unknown === 'density') { eq = `D = m ÷ V = ${fmt(p.m)} g ÷ ${fmt(p.V)} ${vU} = <b>${fmt(p.D)} g/${vU}</b>`; }
-  if (p.unknown === 'volume')  { eq = `V = m ÷ D = ${fmt(p.m)} g ÷ ${fmt(p.D)} ${dU} = <b>${fmt(p.V)} ${dU.slice(2)}</b>`; }
-  if (p.unknown === 'mass')    { eq = `m = D × V = ${fmt(p.D)} ${dU} × ${fmt(p.V)} ${vU} = <b>${fmt(p.m)} g</b>`; }
-  if ((p.vU === 'mL') !== (p.dU === 'g/mL') && p.unknown !== 'volume' && p.unknown !== 'density') eq += '<br><span style="font-weight:400">' + t('mlcmCancel') + '</span>';
-  // Always remind students the two ways of writing the answer mean the same thing.
-  if (p.unknown === 'density') eq += '<br><span style="font-weight:400">' + t('sameThing', { a: fmt(p.D) }) + '</span>';
-  if (p.unknown === 'volume') eq += '<br><span style="font-weight:400">' + t('sameVol', { a: fmt(p.V) }) + '</span>';
-  const have = p.clues.filter(c => RIGHT_UNITS[c.q]).map(c => qName(c.q)).join(' ' + t('and') + ' ');
-  return { sort, eq, have };
-}
-function rightUnitText(p) { const or = ' ' + t('or') + ' '; return p.unknown === 'mass' ? 'g' : p.unknown === 'volume' ? 'mL' + or + 'cm³' : 'g/mL' + or + 'g/cm³'; }
-
-function checkTest() {
-  if (T.done) return;
-  // A comma counts as a decimal point (2,7 = 2.7), the way many Spanish and Vietnamese speakers write it.
-  const raw = $('ansNum').value.replace(',', '.').trim(), unit = $('ansUnit').value;
-  const num = parseFloat(raw);
-  if (raw === '' || isNaN(num) || !unit) { $('testMsg').textContent = t('needBoth'); return; }
-  $('testMsg').textContent = '';
-  const p = T.p, tol = Math.max(0.051, Math.abs(p.answer) * 0.01);   // allow small rounding differences
-  const numOk = Math.abs(num - p.answer) <= tol, unitOk = RIGHT_UNITS[p.unknown].includes(unit);
-  T.done = true; T.tried++;
-  $('ansNum').disabled = $('ansUnit').disabled = $('checkBtn').disabled = true;
-  const w = workedSolution(p);
-  const tri = `<div class="tri-wrap"><div class="tri"><span class="m">m</span><span class="bar"></span><span class="d">D</span><span class="x">×</span><span class="v">V</span></div><div class="math" style="flex:1;min-width:0">${w.eq}</div></div>`;
-  if (numOk && unitOk) {
-    T.correct++; T.streak++;
-    confetti();
-    showPopup(true, t('tOkT'), `<p>${t('tOkB', { q: qThe(p.unknown), have: w.have })}</p>${tri}<p>${t('tExtra')}</p>`,
-      t('tOkS', { q: qThe(p.unknown), eq: speakEq(p) }));
-  } else {
-    T.streak = 0;
-    const what = t(!unitOk && numOk ? 'numOkUnitBad' : unitOk && !numOk ? 'unitOkNumBad' : 'bothBad');
-    showPopup(false, t('tBadT'), `<p class="yours">${t('tYour', { a: fmt(num, 3) + ' ' + unitLabel(unit) })} ${what}</p>
-      <p><b>${t('step1T')}</b></p><div class="math">${w.sort}</div>
-      <p>${t('step2T', { have: w.have, q: qThe(p.unknown), u: rightUnitText(p) })}</p>
-      <p><b>${t('step3T')}</b></p>${tri}`,
-      t('tBadS', { a: fmt(num, 3) + ' ' + sayUnit(unit), what, have: w.have, q: qThe(p.unknown), eq: speakEq(p) }));
-  }
-  updateScore();
-}
-// The worked math, spelled out for read-aloud in the current language.
-function speakEq(p) {
-  const v = { m: fmt(p.m), v: fmt(p.V), d: fmt(p.D) };
-  if (p.unknown === 'density') return t('sayDensity', { ...v, vu: sayUnit(p.vU), du: sayUnit('g/' + p.vU) });
-  if (p.unknown === 'volume') return t('sayVolume', { ...v, du: sayUnit(p.dU), vu: sayUnit(p.dU.slice(2)) });
-  return t('sayMass', { ...v, du: sayUnit(p.dU), vu: sayUnit(p.vU) });
-}
-function updateScore() { $('scCorrect').textContent = T.correct; $('scTried').textContent = T.tried; $('scStreak').textContent = T.streak; }
-$('checkBtn').onclick = checkTest;
-$('ansNum').addEventListener('keydown', e => { if (e.key === 'Enter') checkTest(); });
-$('nextBtn').onclick = newProblem;
-const setHintLabel = () => { $('hintBtn').textContent = t($('hintBox').hidden ? 'showHint' : 'hideHint'); };
-$('hintBtn').onclick = () => { const h = $('hintBox'); h.hidden = !h.hidden; setHintLabel(); $('hintBtn').setAttribute('aria-expanded', String(!h.hidden)); };
-$('speakBtn').onclick = () => speak(t('clueSpeech', { c: T.p.clues.map(c => `${fmt(c.val)} ${sayUnit(c.unit)}.`).join(' ') }));
-
-// ---------- Keypad calculator (number pad 1–9, 0, decimal point, + − × ÷) ----------
-// Students tap the keys or type. Only digits, a decimal point and + − × ÷ are allowed.
-function evalCalc(text) {
-  const src = text.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-').replace(/,/g, '.');
-  if (!/^[0-9+\-*/.\s()]+$/.test(src)) return { err: t('calcOps') };
-  try {
-    const v = Function('"use strict";return (' + src + ')')();
-    if (!isFinite(v)) return { err: t('calcDiv0') };
-    return { v: Math.round(v * 10000) / 10000 };
-  } catch (e) { return { err: t('calcFinish') }; }
-}
-function buildCalc(host, { onUse } = {}) {
-  host.innerHTML = `<div class="screen"><div class="expr" aria-live="polite"></div>
-      <input aria-label="Calculator display" inputmode="none" autocomplete="off" placeholder="0"></div>
-    <div class="keys">
-      <button>7</button><button>8</button><button>9</button><button class="op" aria-label="divide">÷</button>
-      <button>4</button><button>5</button><button>6</button><button class="op" aria-label="times">×</button>
-      <button>1</button><button>2</button><button>3</button><button class="op" aria-label="minus">−</button>
-      <button>0</button><button aria-label="decimal point">.</button><button aria-label="delete" data-k="del">⌫</button><button class="op" aria-label="plus">+</button>
-      <button class="clr" data-k="clr" data-i="clear"></button><button class="eqk" data-k="eq" aria-label="equals">=</button>
-    </div>${onUse ? '<button class="big-btn alt use" data-k="use" data-i="useResult"></button>' : ''}`;
-  const disp = host.querySelector('input'), expr = host.querySelector('.expr');
-  let justSolved = false;
-  const press = k => {
-    if (k === 'clr') { disp.value = ''; expr.textContent = ''; justSolved = false; return; }
-    if (k === 'del') { disp.value = disp.value.slice(0, -1); justSolved = false; return; }
-    if (k === 'eq') {
-      if (!disp.value.trim()) return;
-      const r = evalCalc(disp.value);
-      if (r.err) { expr.textContent = r.err; return; }
-      expr.textContent = disp.value + ' =';
-      disp.value = String(r.v); justSolved = true; return;
-    }
-    if (k === 'use') { if (disp.value && !isNaN(+disp.value)) onUse(disp.value); return; }
-    const isOp = '÷×−+'.includes(k);
-    if (justSolved && !isOp) disp.value = '';     // a new number after "=" starts a new problem
-    justSolved = false;
-    disp.value += isOp ? ' ' + k + ' ' : k;
-  };
-  host.querySelector('.keys').addEventListener('click', e => { const b = e.target.closest('button'); if (b) press(b.dataset.k || b.textContent.trim()); });
-  host.addEventListener('click', e => { if (e.target.dataset.k === 'use') press('use'); });
-  disp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); press('eq'); } });
-}
-buildCalc($('calcSim'));
-buildCalc($('calcTest'), { onUse: v => { if (!T.done) { $('ansNum').value = v; $('ansUnit').focus(); } } });
-
-// =====================================================================
-//  POPUP, READ-ALOUD, CONFETTI
-// =====================================================================
-let popSpeech = '', lastFocus = null;
-function stopConfetti() { bits = []; cfx.clearRect(0, 0, cf.width, cf.height); }
-let popOnClose = null;
-function showPopup(ok, title, html, speech, { noAnswer = false, closeLabel = null, onClose = null } = {}) {
-  popOnClose = onClose;
-  if (!ok) stopConfetti();
-  const pop = $('pop');
-  pop.className = 'pop ' + (ok ? 'ok' : 'bad');
-  $('popBadge').textContent = ok ? '✓' : (noAnswer ? '!' : '✗');
-  $('popTitle').textContent = title;
-  $('popBody').innerHTML = html;
-  popSpeech = speech;
-  $('popClose').textContent = closeLabel || ((S.screen === 'test' && !noAnswer) ? t('nextProblem') : t('ok'));
-  lastFocus = document.activeElement;
-  $('overlay').hidden = false;
-  $('popClose').focus();
-}
-function closePopup() {
-  $('overlay').hidden = true;
-  if (window.speechSynthesis) speechSynthesis.cancel();
-  if (popOnClose) { const f = popOnClose; popOnClose = null; f(); }
-  else if (S.screen === 'test' && T.done) { newProblem(); $('ansNum').focus(); }
-  else if (lastFocus) lastFocus.focus();
-}
-$('popClose').onclick = closePopup;
-$('popSpeak').onclick = () => speak(popSpeech);
-$('overlay').addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
-// Read aloud with a voice for the current language (slightly slow for EL students).
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const code = LANG[lang].speech, voices = speechSynthesis.getVoices();
-  const voice = voices.find(v => v.lang === code) || voices.find(v => v.lang && v.lang.slice(0, 2) === code.slice(0, 2));
-  if (!voice && voices.length) { toast(t('noVoice')); return; }
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = code; u.rate = 0.9; if (voice) u.voice = voice;
-  speechSynthesis.speak(u);
-}
-if (window.speechSynthesis) speechSynthesis.getVoices();   // warm up the voice list
-let toastTimer = 0;
-function toast(msg, kind = '') { const el = $('toast'); el.textContent = msg; el.className = 'toast ' + kind; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4000); }
-
-const cf = $('confetti'), cfx = cf.getContext('2d');
-let bits = [], cfRaf = 0;
-function confetti() {
-  const dpr = window.devicePixelRatio || 1;
-  cf.width = innerWidth * dpr; cf.height = innerHeight * dpr; cfx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const colors = ['#ff9b71', '#0f7c86', '#f6c177', '#81b29a', '#e07a5f', '#3d5a80'];
-  const n = reduceMotion ? 40 : 180;
-  for (let i = 0; i < n; i++) bits.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.5, vx: (Math.random() - 0.5) * 3,
-    vy: 2 + Math.random() * 3, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, c: pick(colors) });
-  if (!cfRaf) cfRaf = requestAnimationFrame(confettiStep);
-}
-function confettiStep() {
-  cfx.clearRect(0, 0, innerWidth, innerHeight);
-  bits = bits.filter(p => p.y < innerHeight + 30);
-  for (const p of bits) {
-    p.vy += 0.05; p.x += p.vx + Math.sin(p.y / 30); p.y += p.vy; p.r += reduceMotion ? 0 : p.vr;
-    cfx.save(); cfx.translate(p.x, p.y); cfx.rotate(p.r); cfx.fillStyle = p.c; cfx.fillRect(-p.w / 2, -p.h / 2, p.w, Math.abs(Math.cos(p.r)) * p.h + 2); cfx.restore();
-  }
-  cfRaf = bits.length ? requestAnimationFrame(confettiStep) : 0;
+  state.prob = state.mode === 'mark' ? buildMark() : state.mode === 'liquid' ? buildLiquid() : buildGrid();
+  render();
+  window.scrollTo({ top: 0 });
 }
 
-// =====================================================================
-//  SCREEN SWITCHING
-// =====================================================================
-const STARTERS = { intro: startIntro, compare: startCompare, mystery: startMystery };
-function go(screen) {
-  S.screen = screen;
-  stopConfetti();
-  store('densityLab.screen', screen);
-  $('home').hidden = screen !== 'home';
-  $('test').hidden = screen !== 'test';
-  const sim = ['intro', 'compare', 'mystery'].includes(screen);
-  $('sim').hidden = !sim;
-  $('tools').hidden = !sim;
-  document.querySelectorAll('[data-for]').forEach(el => { el.hidden = !el.dataset.for.split(' ').includes(screen); });
-  if (screen !== 'mystery') $('dtable').hidden = true;
-  document.querySelectorAll('.tab').forEach(t => { if (t.dataset.go === screen) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
-  cancelAnimationFrame(raf);
-  S.pushUnder = false; renderSimBtns();
-  if (sim) { fit(); STARTERS[screen](); loop(); }
-  renderKey();
-  if (screen === 'test' && !T.p) newProblem();
-}
-document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
-function renderSimBtns() {
-  $('pushBtn').textContent = t(S.pushUnder ? 'letFloat' : 'holdUnder'); $('pushBtn').setAttribute('aria-pressed', String(S.pushUnder));
-}
-$('pushBtn').onclick = () => { S.pushUnder = !S.pushUnder; S.blocks.forEach(b => (b.settled = false)); renderSimBtns(); };
-$('resetBtn').onclick = () => {
-  S.pushUnder = false; renderSimBtns();
-  if (S.screen === 'intro') { S.intro = { mat: 'wood', m: 250, V: 500 }; $('mat-wood').checked = true; }
-  if (S.screen === 'mystery') { /* new blocks in the same set */ }
-  STARTERS[S.screen]();
-};
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const tb = e.target.closest('[data-test]');
+  if (tb) { startTest(tb.dataset.test); return; }
+  const mb = e.target.closest('[data-mode]');
+  if (mb) { closePopup(); if (state.test) { state.level = state.pLevel || 'easy'; state.test = null; } state.mode = mb.dataset.mode; syncControls(); newProblem(); return; }
+  const lb = e.target.closest('[data-level]');
+  if (lb) { state.level = lb.dataset.level; syncControls(); newProblem(); return; }
+  if (e.target.closest('.testNext')) { testNextQ(); return; }
+  if (e.target.closest('#newBtn') || e.target.closest('#nextBtn')) { newProblem(); return; }
+  const ck = e.target.closest('.ck');
+  if (ck) { calcPress(ck.dataset.k); return; }
+  const u = e.target.closest('svg.pv use.o');
+  if (u) u.classList.toggle('seen');
+});
+document.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('calcbox')) calcOpen = e.target.open; }, true);
+document.addEventListener('input', e => { if (e.target.id === 'cexpr') { e.target.dataset.fresh = '0'; calcPreview(); } });
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'cexpr' && e.key === 'Enter') { e.preventDefault(); calcPress('='); return; } if (e.key === 'Enter' && e.target.classList.contains('num')) { const b = $('#checkBtn'); if (b && !b.disabled) b.click(); } });
 
-// =====================================================================
-//  TEACHER MODE: answer keys for whatever screen is open
-//  To change the code, edit TEACHER_CODE below. (A student who reads the page source could find it,
-//  so treat it as a "keep honest students honest" lock, not real security.)
-// =====================================================================
-const TEACHER_CODE = 'scavila';
-$('teacherBtn').onclick = () => {
-  if (S.teacher) { S.teacher = false; $('teacherBtn').setAttribute('aria-pressed', 'false'); $('teacherBtn').textContent = 'Teacher'; renderKey(); return; }
-  $('codeIn').value = ''; $('codeMsg').textContent = ''; $('codeOverlay').hidden = false; $('codeIn').focus();
-};
-function tryCode() {
-  if ($('codeIn').value.trim().toLowerCase() !== TEACHER_CODE) { $('codeMsg').textContent = 'That code is not right.'; return; }
-  $('codeOverlay').hidden = true; S.teacher = true;
-  $('teacherBtn').setAttribute('aria-pressed', 'true'); $('teacherBtn').textContent = 'Teacher: on';
-  renderKey();
-}
-$('codeGo').onclick = tryCode;
-$('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); if (e.key === 'Escape') $('codeOverlay').hidden = true; });
-$('codeCancel').onclick = () => { $('codeOverlay').hidden = true; };
-
-function renderKey() {
-  const box = $('keyBox');
-  const sim = ['intro', 'compare', 'mystery'].includes(S.screen);
-  if (!S.teacher || !(sim || S.screen === 'test')) { box.hidden = true; return; }
-  (S.screen === 'test' ? $('test').querySelector('.side') : $('tools')).appendChild(box);
-  box.hidden = false;
-  let html = '<h3>Answer key (teacher only)</h3>';
-  if (sim) {
-    const mys = S.screen === 'mystery';
-    html += `<div class="data-wrap"><table class="data-table"><tr><th>Block</th>${mys ? '<th>Material</th>' : ''}<th>Mass (g)</th><th>Volume (mL)</th><th>Density (g/mL)</th><th>Water level, held under</th><th>Water level, floating</th><th>Sink / Float</th></tr>`;
-    for (const b of [...S.blocks].sort((x, y) => x.label.localeCompare(y.label))) {   // A, B, C… even after dragging
-      const d = b.m / b.V, sinks = d > RHO_WATER;
-      html += `<tr><td><b>${b.label}</b></td>${mys ? `<td>${LANG.en['mat_' + b.mat]}</td>` : ''}<td>${fmt(b.m, 1)}</td><td>${fmt(b.V, 1)}</td><td>${fmtFixed(d, 2)}</td>
-        <td>${fmt(Math.round(WATER0 + b.V), 0)}</td><td>${sinks ? '—' : fmt(Math.round(WATER0 + b.m), 0)}</td><td>${sinks ? 'sinks' : 'floats'}</td></tr>`;
-    }
-    html += '</table></div><p class="note">Water levels are for one block alone in the tank (starts at 5000 mL). Updates when you change a slider, mode or set.</p>';
-  } else if (T.p) {
-    const p = T.p, unit = p.unknown === 'mass' ? 'g' : p.unknown === 'volume' ? 'mL (= cm³)' : 'g/mL (= g/cm³)';
-    html += `<p style="font-size:18px">Missing: <b>${p.unknown}</b><br>Answer: <b>${fmt(p.answer, 2)} ${unit}</b></p>`;
-  }
-  box.innerHTML = html;
-}
-
-// =====================================================================
-//  LANGUAGE SWITCHING
-// =====================================================================
-// Fill every [data-i] (text), [data-ih] (text with bold) and [data-ia] (screen-reader label) inside root.
-function translate(root = document) {
-  root.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
-  root.querySelectorAll('[data-ih]').forEach(el => { el.innerHTML = t(el.dataset.ih); });
-  root.querySelectorAll('[data-ia]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.ia)); el.title = t(el.dataset.ia); });
-  root.querySelectorAll('select[data-b]').forEach(el => el.setAttribute('aria-label', t('matFor', { b: el.dataset.b })));
-}
-function setLang(code) {
-  lang = code;
-  store('densityLab.lang', code);
-  document.documentElement.lang = code;
-  document.querySelectorAll('.langs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === code)));
-  translate();
-  buildIntroSliders(); introSync('V');   // same numbers, new labels
-  buildCompareSlider();
-  renderIntroEq();
-  buildDensityTable();
-  if (S.blocks.length && S.screen === 'mystery') renderMeasure();
-  setHintLabel();
-  renderSimBtns();
-  renderKey();
-  $('testMsg').textContent = '';
-}
-document.querySelectorAll('.langs button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
-
-buildIntro();
-setLang(lang);
-const saved = store('densityLab.screen');
-go(['intro', 'compare', 'mystery', 'test'].includes(saved) ? saved : 'home');
+buildDefs();
+syncControls();
+newProblem();
+window.__test = { testNextQ, startTest, state, newProblem, checkGrid, checkMark, release, buildGrid, buildMark };
+})();
 </script>
+</body>
+</html>
