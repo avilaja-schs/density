@@ -66,6 +66,26 @@ button, select, input { font: inherit; color: inherit; }
 .dtable td.n { font-family: var(--mono); text-align: right; }
 .small-btn { border: 2px solid var(--accent); background: #fff; color: var(--accent); font-weight: 700; border-radius: 5px; padding: 2px 10px; cursor: pointer; font-size: 14px; }
 .small-btn:hover { background: #e6f3f1; }
+/* Buttons on the scene, next to Reset */
+.sim-btns { position: absolute; left: 70px; top: 16px; display: flex; gap: 8px; }
+.chip-btn { font: 700 14px var(--font); padding: 7px 12px; border-radius: 999px; border: 2px solid var(--accent); background: #fff; color: var(--accent); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.chip-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
+/* Teacher code dialog */
+.pop.pred { border-color: var(--accent); }
+.pop.pred h2 { color: var(--ink); font-size: 22px; }
+.code-in { font: 20px var(--mono); padding: 6px 10px; border: 2px solid var(--line); border-radius: 8px; width: 100%; }
+.toast.ok { background: var(--ok); } .toast.bad { background: var(--bad); }
+.teacher-btn { background: transparent; color: #b9cbd2; border: 1px solid #3d5b6c; border-radius: 999px; padding: 5px 11px; font-size: 14px; cursor: pointer; }
+.teacher-btn[aria-pressed="true"] { background: #ffd84d; color: var(--nav); font-weight: 700; border-color: #ffd84d; }
+/* Data table + teacher key */
+.data-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.data-table th, .data-table td { border: 1px solid #d5dde3; padding: 4px 6px; text-align: center; }
+.data-table th { background: #e6f3f1; font-size: 13px; }
+.data-table td.empty { color: #b7c2c8; }
+.key-box { border: 2px dashed #e0b300; background: #fffbea; }
+.key-box h3 { color: #7a5b00; }
+.key-box .note { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
 /* Mystery: measure-a-block panel */
 .pick-row { display: flex; gap: 5px; margin: 2px 0 6px; flex-wrap: wrap; }
 .pick-row button { font: 700 14px var(--mono); padding: 4px 8px; border-radius: 6px; border: 2px solid var(--line); background: #fff; cursor: pointer; }
@@ -203,6 +223,7 @@ button, select, input { font: inherit; color: inherit; }
     <div class="langs" role="group" aria-label="Language / Idioma / Ngôn ngữ">
       <button data-lang="en" lang="en">English</button><button data-lang="es" lang="es">Español</button><button data-lang="vi" lang="vi">Tiếng Việt</button>
     </div>
+    <button class="teacher-btn" id="teacherBtn" aria-pressed="false">Teacher</button>
     <div class="tabs">
       <button class="tab" data-go="home"><span class="ico" style="display:grid;place-items:center;font-size:18px;color:#fff">⌂</span><span data-i="tab_home"></span></button>
       <button class="tab" data-go="intro"><span class="ico"><i style="left:16px;background:#8a5a2b"></i></span><span data-i="tab_intro"></span></button>
@@ -282,6 +303,9 @@ button, select, input { font: inherit; color: inherit; }
         </div>
 
         <button class="reset" id="resetBtn" data-ia="reset">↻</button>
+        <div class="sim-btns">
+          <button class="chip-btn" id="pushBtn" aria-pressed="false"></button>
+        </div>
       </div>
     </div>
   </div>
@@ -291,6 +315,10 @@ button, select, input { font: inherit; color: inherit; }
     <div class="box">
       <h3 data-i="calc"></h3>
       <div class="keycalc" id="calcSim"></div>
+    </div>
+    <div class="box" data-for="mystery">
+      <h3 data-i="myData"></h3>
+      <div class="data-wrap"><table class="data-table" id="dataTable"></table></div>
     </div>
     <div class="box" data-for="mystery">
       <h3 data-i="howTo"></h3>
@@ -363,6 +391,23 @@ button, select, input { font: inherit; color: inherit; }
   </div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
+
+<!-- Teacher code -->
+<div class="overlay" id="codeOverlay" hidden>
+  <div class="pop pred" role="dialog" aria-modal="true" aria-labelledby="codeTitle">
+    <h2 id="codeTitle">Teacher code</h2>
+    <p>Type the teacher code to show answer keys.</p>
+    <input id="codeIn" type="password" autocomplete="off" aria-label="Teacher code" class="code-in">
+    <p class="msg" id="codeMsg" role="status"></p>
+    <div class="actions">
+      <button class="big-btn alt" id="codeCancel">Cancel</button>
+      <button class="big-btn" id="codeGo">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Teacher answer key (moved under the scene or into the Test side column) -->
+<div class="box key-box" id="keyBox" hidden></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
 <script>
@@ -410,12 +455,15 @@ const LANG = {
     nameEach: 'Name each block', howTo: 'How to solve',
     step1: 'Put a block on the <b>scale</b>. Write the mass (g).',
     step2: 'Drop it in the water. Volume = new level − 5000 mL.',
-    step3: 'It floats? <b>Hold it under</b> the water to read the full volume.',
+    step3: 'It floats? Press <b>Hold floaters under</b> (or hold it under with the mouse) to read the full volume.',
     step4: 'Density = mass ÷ volume. Match it in the table.',
     reset: 'Reset this screen', water: 'Water',
     triangle: 'Density triangle', triAria: 'Density triangle: m on top, D times V on the bottom', calc: 'Calculator',
     choose: 'Choose…', check: 'Check', matFor: 'Material for block {b}',
     idStart: 'Pick a material for a block, then press Check.',
+    holdUnder: 'Hold floaters under', letFloat: 'Let floaters float',
+    floatsW: 'floats', sinksW: 'sinks',
+    myData: 'My data', colBlock: 'Block', colSF: 'Sink / Float',
     measureT: 'Measure a block', needAll: 'Fill in mass, volume, and density.', doneCount: 'Done: {n} of {t} blocks', tryAgain: 'Try again',
     mOkT: 'Correct! You measured {b}.', mOkB: 'Mass {m} g, volume {v} mL, density {d} g/mL. That matches {mat} in the Density Table.',
     mBadT: 'Try again', mGood: '{q}: ✓ correct',
@@ -502,12 +550,15 @@ const LANG = {
     nameEach: 'Nombra cada bloque', howTo: 'Cómo resolver',
     step1: 'Pon un bloque en la <b>báscula</b>. Anota la masa (g).',
     step2: 'Échalo al agua. Volumen = nuevo nivel − 5000 mL.',
-    step3: '¿Flota? <b>Mantenlo bajo</b> el agua para leer el volumen completo.',
+    step3: '¿Flota? Presiona <b>Hundir los que flotan</b> (o mantenlo bajo el agua con el ratón) para leer el volumen completo.',
     step4: 'Densidad = masa ÷ volumen. Búscala en la tabla.',
     reset: 'Reiniciar esta pantalla', water: 'Agua',
     triangle: 'Triángulo de densidad', triAria: 'Triángulo de densidad: m arriba, D por V abajo', calc: 'Calculadora',
     choose: 'Elige…', check: 'Revisar', matFor: 'Material del bloque {b}',
     idStart: 'Elige un material para un bloque y luego presiona Revisar.',
+    holdUnder: 'Hundir los que flotan', letFloat: 'Dejar que floten',
+    floatsW: 'flota', sinksW: 'se hunde',
+    myData: 'Mis datos', colBlock: 'Bloque', colSF: 'Se hunde / Flota',
     measureT: 'Mide un bloque', needAll: 'Escribe la masa, el volumen y la densidad.', doneCount: 'Terminados: {n} de {t} bloques', tryAgain: 'Intentar otra vez',
     mOkT: '¡Correcto! Mediste {b}.', mOkB: 'Masa {m} g, volumen {v} mL, densidad {d} g/mL. Coincide con {mat} en la Tabla de densidades.',
     mBadT: 'Inténtalo otra vez', mGood: '{q}: ✓ correcto',
@@ -594,12 +645,15 @@ const LANG = {
     nameEach: 'Gọi tên từng khối', howTo: 'Cách giải',
     step1: 'Đặt một khối lên <b>cân</b>. Ghi lại khối lượng (g).',
     step2: 'Thả nó vào nước. Thể tích = mực nước mới − 5000 mL.',
-    step3: 'Nó nổi? <b>Giữ nó chìm</b> dưới nước để đọc toàn bộ thể tích.',
+    step3: 'Nó nổi? Bấm <b>Giữ khối nổi chìm xuống</b> (hoặc dùng chuột giữ nó dưới nước) để đọc toàn bộ thể tích.',
     step4: 'Khối lượng riêng = khối lượng ÷ thể tích. Tìm số đó trong bảng.',
     reset: 'Làm lại màn hình này', water: 'Nước',
     triangle: 'Tam giác khối lượng riêng', triAria: 'Tam giác khối lượng riêng: m ở trên, D nhân V ở dưới', calc: 'Máy tính',
     choose: 'Chọn…', check: 'Chấm bài', matFor: 'Vật liệu của khối {b}',
     idStart: 'Chọn vật liệu cho một khối, rồi bấm Chấm bài.',
+    holdUnder: 'Giữ khối nổi chìm xuống', letFloat: 'Thả cho khối nổi',
+    floatsW: 'nổi', sinksW: 'chìm',
+    myData: 'Dữ liệu của em', colBlock: 'Khối', colSF: 'Chìm / Nổi',
     measureT: 'Đo một khối', needAll: 'Hãy điền khối lượng, thể tích và khối lượng riêng.', doneCount: 'Đã xong: {n}/{t} khối', tryAgain: 'Thử lại',
     mOkT: 'Đúng rồi! Em đã đo xong {b}.', mOkB: 'Khối lượng {m} g, thể tích {v} mL, khối lượng riêng {d} g/mL. Khớp với {mat} trong Bảng khối lượng riêng.',
     mBadT: 'Hãy thử lại', mGood: '{q}: ✓ đúng',
@@ -716,8 +770,10 @@ const S = {
   blocks: [],
   show: { mass: true, vol: false, den: false },
   intro: { mat: 'wood', m: 250, V: 500 },
-  compare: { mode: 'volume', val: { mass: 250, volume: 500, density: 0.5 } },
-  mystery: { set: '1', sel: null, work: {} },   // work[id] = { m, v, d, tries, done }
+  compare: { mode: 'volume', val: { mass: 240, volume: 500, density: 0.5 } },   // 240 g gives whole-number volumes (150/600/200/300 mL)
+  mystery: { set: '1', sel: null, work: {} },
+  pushUnder: false,     // "Hold floaters under" button
+  teacher: false,       // teacher mode shows answer keys   // work[id] = { m, v, d, tries, done }
 };
 
 // =====================================================================
@@ -733,7 +789,7 @@ function displaced(b, wt) {
   const overPool = cx > PL && cx < PR;
   if (!(b.loc === 'pool' || (b.held && overPool))) return 0;
   // A block resting in the water: floaters push aside their own mass of water, sinkers their whole volume.
-  if (b.settled && !b.held) return Math.min(b.m / RHO_WATER, b.V);
+  if (b.settled && !b.held) return S.pushUnder ? b.V : Math.min(b.m / RHO_WATER, b.V);   // held under = whole volume
   const top = b.y - s;
   const frac = clamp((b.y - Math.max(top, wt)) / s, 0, 1);
   return frac * b.V;
@@ -757,7 +813,11 @@ function stepPhysics() {
     if (b.held) continue;
     const s = sideOf(b.V), d = b.m / b.V;
     let target;
-    if (b.loc === 'pool') target = d > RHO_WATER ? PB : Math.min(PB, wt + (d / RHO_WATER) * s);
+    if (b.loc === 'pool') {
+      if (d > RHO_WATER) target = PB;                                   // sinks to the floor
+      else if (S.pushUnder) target = Math.min(PB, wt + s + 4);          // pushed just under the surface
+      else target = Math.min(PB, wt + (d / RHO_WATER) * s);             // floats: this fraction is under water
+    }
     else if (b.loc === 'scale') target = SCALE.top;
     else target = GY;
     const diff = target - b.y;
@@ -919,7 +979,14 @@ function drawLevelReadout(wt, level) {
   ctx.strokeStyle = '#e01b1b'; ctx.setLineDash([4, 4]); ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(x + 12, y + h); ctx.lineTo(x + 12, wt); ctx.stroke(); ctx.setLineDash([]);
   rr(x, y, w, h, 5); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#e01b1b'; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 8, y + h / 2 + 1);
+  ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x + 8, y + 16);
+}
+
+// A thin rod holding a floating block under the water (shown while "Hold floaters under" is on).
+function drawPushRod(b) {
+  const s = sideOf(b.V), cx = b.x + s / 2;
+  ctx.fillStyle = '#5b4a3a'; ctx.fillRect(cx - 3, GY - 18, 6, b.y - s - (GY - 18));
+  ctx.fillStyle = '#ff7a59'; rr(cx - 14, GY - 26, 28, 10, 4); ctx.fill();
 }
 
 function draw() {
@@ -935,6 +1002,7 @@ function draw() {
   ctx.fillStyle = 'rgba(120, 200, 210, 0.14)';           // faint "under water" tint that keeps colours true
   ctx.fillRect(PL, wt, PR - PL, PB - wt);
   ctx.fillStyle = 'rgba(140, 220, 220, 0.85)'; ctx.fillRect(PL, wt, PR - PL, 4);   // water surface line in front
+  if (S.pushUnder) order.filter(b => inPool(b) && !b.held && b.m / b.V <= RHO_WATER).forEach(drawPushRod);
   order.filter(b => !inPool(b)).forEach(drawBlockBody);
   order.forEach(drawBlockLabels);
   drawLevelReadout(wt, level);
@@ -984,8 +1052,10 @@ canvas.addEventListener('pointermove', e => {
 });
 function endDrag() {
   if (!drag) return;
-  const b = drag.b; b.held = false; placeBlock(b); drag = null; canvas.classList.remove('dragging');
+  const b = drag.b; drag = null; canvas.classList.remove('dragging');
+  b.held = false; placeBlock(b);
 }
+
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 
@@ -1042,6 +1112,7 @@ function introSync(changed) {
   const b = S.blocks[0];
   if (b && S.screen === 'intro') { b.m = I.m; b.V = I.V; b.color = colorForIntro(); refit(['A']); }
   renderIntroEq();
+  if (S.screen === 'intro') renderKey();
 }
 function renderIntroEq() {
   const I = S.intro, d = I.m / I.V;
@@ -1086,6 +1157,7 @@ function buildCompareSlider() {
 function updateCompareBlocks() {
   for (const b of S.blocks) { const { m, V } = cmpMass(b.id); b.m = m; b.V = V; }
   refit(['A', 'B']);
+  renderKey();
 }
 function startCompare() {
   const cfg = CMP[S.compare.mode];
@@ -1121,6 +1193,7 @@ function startMystery() {
   M.work = {};
   M.sel = S.blocks[0].id;
   renderMeasure();
+  renderKey();
 }
 
 // ---------- Measure a block: students type mass, volume and density, then Check ----------
@@ -1139,6 +1212,17 @@ function renderMeasure() {
   $('measCheck').disabled = w.done;
   const n = S.blocks.filter(b => work(b.id).done).length;
   $('measStatus').textContent = t('doneCount', { n, t: S.blocks.length });
+  renderDataTable();
+}
+// "My data": each block the student measured correctly fills a row with their numbers.
+function renderDataTable() {
+  const head = `<tr><th>${t('colBlock')}</th><th>${t('mass')} (g)</th><th>${t('volume')} (mL)</th><th>${t('density')} (g/mL)</th><th>${t('colSF')}</th></tr>`;
+  const rows = S.blocks.map(b => {
+    const w = work(b.id);
+    if (!w.done) return `<tr><td><b>${b.label}</b></td><td class="empty">—</td><td class="empty">—</td><td class="empty">—</td><td class="empty">—</td></tr>`;
+    return `<tr><td><b>${b.label}</b></td><td>${w.m}</td><td>${w.v}</td><td>${w.d}</td><td>${t(b.m / b.V > RHO_WATER ? 'sinksW' : 'floatsW')}</td></tr>`;
+  }).join('');
+  $('dataTable').innerHTML = head + rows;
 }
 $('pickRow').addEventListener('click', e => { const id = e.target.closest('button')?.dataset.pick; if (id) { S.mystery.sel = id; renderMeasure(); } });
 for (const [k, id] of Object.entries(MEAS_IN)) $(id).addEventListener('input', e => { const w = work(S.mystery.sel); w[k] = e.target.value; delete w.marks[k]; e.target.className = ''; });
@@ -1223,6 +1307,7 @@ function newProblem() {
   $('clues').innerHTML = T.p.clues.map(c => `<li><span>${fmt(c.val)}</span><span class="u">${c.unit}</span></li>`).join('') + `<li class="missing">? = ________</li>`;
   $('ansNum').value = ''; $('ansUnit').value = ''; $('ansNum').disabled = $('ansUnit').disabled = $('checkBtn').disabled = false;
   $('testMsg').textContent = '';
+  renderKey();
 }
 $('ansUnit').innerHTML = '<option value="" data-i="choose"></option>' + UNIT_CHOICES.map(u => `<option value="${u}">${unitLabel(u)}</option>`).join('');
 
@@ -1375,7 +1460,7 @@ function speak(text) {
 }
 if (window.speechSynthesis) speechSynthesis.getVoices();   // warm up the voice list
 let toastTimer = 0;
-function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4000); }
+function toast(msg, kind = '') { const el = $('toast'); el.textContent = msg; el.className = 'toast ' + kind; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4000); }
 
 const cf = $('confetti'), cfx = cf.getContext('2d');
 let bits = [], cfRaf = 0;
@@ -1415,15 +1500,65 @@ function go(screen) {
   if (screen !== 'mystery') $('dtable').hidden = true;
   document.querySelectorAll('.tab').forEach(t => { if (t.dataset.go === screen) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
   cancelAnimationFrame(raf);
+  S.pushUnder = false; renderSimBtns();
   if (sim) { fit(); STARTERS[screen](); loop(); }
+  renderKey();
   if (screen === 'test' && !T.p) newProblem();
 }
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+function renderSimBtns() {
+  $('pushBtn').textContent = t(S.pushUnder ? 'letFloat' : 'holdUnder'); $('pushBtn').setAttribute('aria-pressed', String(S.pushUnder));
+}
+$('pushBtn').onclick = () => { S.pushUnder = !S.pushUnder; S.blocks.forEach(b => (b.settled = false)); renderSimBtns(); };
 $('resetBtn').onclick = () => {
+  S.pushUnder = false; renderSimBtns();
   if (S.screen === 'intro') { S.intro = { mat: 'wood', m: 250, V: 500 }; $('mat-wood').checked = true; }
   if (S.screen === 'mystery') { /* new blocks in the same set */ }
   STARTERS[S.screen]();
 };
+
+// =====================================================================
+//  TEACHER MODE: answer keys for whatever screen is open
+//  To change the code, edit TEACHER_CODE below. (A student who reads the page source could find it,
+//  so treat it as a "keep honest students honest" lock, not real security.)
+// =====================================================================
+const TEACHER_CODE = 'scavila';
+$('teacherBtn').onclick = () => {
+  if (S.teacher) { S.teacher = false; $('teacherBtn').setAttribute('aria-pressed', 'false'); $('teacherBtn').textContent = 'Teacher'; renderKey(); return; }
+  $('codeIn').value = ''; $('codeMsg').textContent = ''; $('codeOverlay').hidden = false; $('codeIn').focus();
+};
+function tryCode() {
+  if ($('codeIn').value.trim().toLowerCase() !== TEACHER_CODE) { $('codeMsg').textContent = 'That code is not right.'; return; }
+  $('codeOverlay').hidden = true; S.teacher = true;
+  $('teacherBtn').setAttribute('aria-pressed', 'true'); $('teacherBtn').textContent = 'Teacher: on';
+  renderKey();
+}
+$('codeGo').onclick = tryCode;
+$('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') tryCode(); if (e.key === 'Escape') $('codeOverlay').hidden = true; });
+$('codeCancel').onclick = () => { $('codeOverlay').hidden = true; };
+
+function renderKey() {
+  const box = $('keyBox');
+  const sim = ['intro', 'compare', 'mystery'].includes(S.screen);
+  if (!S.teacher || !(sim || S.screen === 'test')) { box.hidden = true; return; }
+  (S.screen === 'test' ? $('test').querySelector('.side') : $('tools')).appendChild(box);
+  box.hidden = false;
+  let html = '<h3>Answer key (teacher only)</h3>';
+  if (sim) {
+    const mys = S.screen === 'mystery';
+    html += `<div class="data-wrap"><table class="data-table"><tr><th>Block</th>${mys ? '<th>Material</th>' : ''}<th>Mass (g)</th><th>Volume (mL)</th><th>Density (g/mL)</th><th>Water level, held under</th><th>Water level, floating</th><th>Sink / Float</th></tr>`;
+    for (const b of [...S.blocks].sort((x, y) => x.label.localeCompare(y.label))) {   // A, B, C… even after dragging
+      const d = b.m / b.V, sinks = d > RHO_WATER;
+      html += `<tr><td><b>${b.label}</b></td>${mys ? `<td>${LANG.en['mat_' + b.mat]}</td>` : ''}<td>${fmt(b.m, 1)}</td><td>${fmt(b.V, 1)}</td><td>${fmtFixed(d, 2)}</td>
+        <td>${fmt(Math.round(WATER0 + b.V), 0)}</td><td>${sinks ? '—' : fmt(Math.round(WATER0 + b.m), 0)}</td><td>${sinks ? 'sinks' : 'floats'}</td></tr>`;
+    }
+    html += '</table></div><p class="note">Water levels are for one block alone in the tank (starts at 5000 mL). Updates when you change a slider, mode or set.</p>';
+  } else if (T.p) {
+    const p = T.p, unit = p.unknown === 'mass' ? 'g' : p.unknown === 'volume' ? 'mL (= cm³)' : 'g/mL (= g/cm³)';
+    html += `<p style="font-size:18px">Missing: <b>${p.unknown}</b><br>Answer: <b>${fmt(p.answer, 2)} ${unit}</b></p>`;
+  }
+  box.innerHTML = html;
+}
 
 // =====================================================================
 //  LANGUAGE SWITCHING
@@ -1447,6 +1582,8 @@ function setLang(code) {
   buildDensityTable();
   if (S.blocks.length && S.screen === 'mystery') renderMeasure();
   setHintLabel();
+  renderSimBtns();
+  renderKey();
   $('testMsg').textContent = '';
 }
 document.querySelectorAll('.langs button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
